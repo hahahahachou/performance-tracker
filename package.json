@@ -1,0 +1,14 @@
+{
+  "name": "performance-tracker-live",
+  "version": "1.0.0",
+  "description": "演出项目进度追踪 - 云端实时同步版",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5"
+  }
+}
