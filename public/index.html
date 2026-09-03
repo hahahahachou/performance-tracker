@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎭 演出项目进度追踪</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    .progress-bar{transition:width .5s ease-in-out}
+    .group-card{transition:box-shadow .2s}
+    .group-card:hover{box-shadow:0 10px 25px rgba(0,0,0,.1)}
+    .todo-item:hover{background-color:#f9fafb}
+    .todo-done span.todo-text{text-decoration:line-through;color:#9ca3af}
+    .note-item{border-left:3px solid #f59e0b}
+    .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:9999px;font-size:12px;font-weight:600}
+    .section-label{font-size:13px;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    .inline-input{font-size:13px;padding:6px 10px;border:1.5px dashed #d1d5db;border-radius:8px;outline:none;width:100%;transition:border-color .2s}
+    .inline-input:focus{border-color:#8b5cf6;border-style:solid}
+    .inline-textarea{font-size:13px;padding:6px 10px;border:1.5px dashed #fbbf24;border-radius:8px;outline:none;width:100%;resize:none;transition:border-color .2s}
+    .inline-textarea:focus{border-color:#f59e0b;border-style:solid}
+    .delete-btn{color:#d1d5db;cursor:pointer;font-size:16px;line-height:1}
+    .delete-btn:hover{color:#ef4444}
+    .checkbox-custom{width:18px;height:18px;accent-color:#8b5cf6;cursor:pointer;flex-shrink:0}
+    .week-tag{font-size:11px;padding:1px 8px;border-radius:4px;font-weight:600;white-space:nowrap}
+    .tab-btn{cursor:pointer;padding:10px 20px;border-radius:8px 8px 0 0;font-weight:600;transition:all .2s;user-select:none}
+    .tab-btn.active{background:#fff;color:#8b5cf6;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+    .tab-btn:not(.active){background:#e5e7eb;color:#6b7280}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    #syncStatus{position:fixed;top:10px;right:10px;z-index:100;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;transition:all .3s}
+    .sync-connected{background:#d1fae5;color:#065f46}
+    .sync-disconnected{background:#fee2e2;color:#991b1b}
+    .sync-updating{background:#fef3c7;color:#92400e}
+    .flash{animation:flash-bg 1s ease-out}
+    @keyframes flash-bg{0%{background-color:#ede9fe}100%{background-color:transparent}}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+  <div id="syncStatus" class="sync-disconnected">⏳ 连接中...</div>
+
+  <div class="container mx-auto px-4 py-8 max-w-7xl">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">🎭 演出项目进度追踪</h1>
+      <p class="text-gray-600">《演出制作实务（3）》 · 实时同步版</p>
+    </div>
+
+    <!-- 用户名 -->
+    <div class="flex justify-center mb-6">
+      <div class="bg-white rounded-lg shadow px-4 py-2 flex items-center gap-2">
+        <span class="text-sm text-gray-500">你的名字：</span>
+        <input type="text" id="userName" class="border-0 outline-none text-sm text-purple-600 font-semibold w-24 bg-transparent" placeholder="点击输入" value="">
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-1 mb-0">
+      <div class="tab-btn active" onclick="switchTab('progress')">📊 各组进度</div>
+      <div class="tab-btn" onclick="switchTab('schedule')">📅 课程计划</div>
+    </div>
+
+    <!-- Tab1: 各组进度 -->
+    <div id="tab-progress" class="tab-content active bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-purple-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-purple-600" id="totalGroups">11</div><div class="text-gray-600 mt-1 text-sm">工作组总数</div></div>
+        <div class="bg-blue-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-blue-600" id="avgProgress">0%</div><div class="text-gray-600 mt-1 text-sm">平均进度</div></div>
+        <div class="bg-green-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-green-600" id="completedGroups">0</div><div class="text-gray-600 mt-1 text-sm">已完成组数</div></div>
+        <div class="bg-orange-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-orange-600" id="pendingTodos">0</div><div class="text-gray-600 mt-1 text-sm">待办事项</div></div>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-4 md:p-6 mb-6"><h2 class="text-lg font-semibold mb-4">📊 进度总览</h2><canvas id="progressChart"></canvas></div>
+      <div class="flex flex-col gap-6" id="groupsContainer"></div>
+    </div>
+
+    <!-- Tab2: 课程计划 -->
+    <div id="tab-schedule" class="tab-content bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
+      <h2 class="text-xl font-bold mb-4">《演出制作实务（3）》 课程规划</h2>
+      <div id="scheduleContainer" class="space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- 更新进度弹窗 -->
+  <div id="updateModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl p-6 md:p-8 w-full max-w-md">
+      <h3 class="text-2xl font-bold mb-4" id="modalTitle">更新进度</h3>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">进度值 (0-100)</label>
+        <input type="range" id="progressSlider" min="0" max="100" value="0" class="w-full accent-purple-600">
+        <div class="text-center text-3xl font-bold text-purple-600 mt-2" id="progressValue">0%</div>
+      </div>
+      <div class="flex gap-4">
+        <button onclick="closeModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400">取消</button>
+        <button onclick="submitUpdate()" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">确认更新</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const COURSE_PLAN = [
+      {week:'第一周',date:'/',title:'/',objectives:'/'},
+      {week:'第二周',date:'2026年8月31日（周一）',title:'学期总览与演出制作启动会',objectives:'1.使学生全面了解本学期课程的整体安排、教学目标与结课展演要求。\n2.帮助学生回顾上学期成果，明确本学期各组的工作方向与分工。\n3.激发学生的项目责任感与团队协作意识。'},
+      {week:'第三周',date:'2026年9月7日（周一）',title:'排练计划制定',objectives:'1. 使学生掌握演出排练计划的制定方法与流程。\n2. 引导学生根据剧本完成首次坐排。\n3. 培养学生的时间管理能力与排练纪律意识。\n4. 反馈剧组排练进度。'},
+      {week:'第四周',date:'2026年9月14日（周一）',title:'舞美设计定稿',objectives:'1. 舞台美术设计方案本周内定稿，确定制作/采购方案。\n2. 结合演出场地现场测量舞台美术制作方案。\n3. 反馈剧组排练进度。'},
+      {week:'第五周',date:'2026年9月21日（周一）',title:'服装设计定稿',objectives:'1. 服装设计方案本周内定稿，确定制作/采购方案。\n2. 结合演员身形完成试装安排与尺寸记录。\n3. 反馈剧组排练进度。'},
+      {week:'第六周',date:'2026年9月28日（周一）',title:'道具清单定稿',objectives:'1. 道具清单完成终审，明确每件道具的落实方式和时间节点。\n2. 确定代用道具，确保排练不受道具缺位影响。\n3. 反馈剧组排练进度。'},
+      {week:'第七周',date:'2026年10月5日（周一）',title:'国庆假期',objectives:'/'},
+      {week:'第八周',date:'2026年10月12日（周一）',title:'音响设计定稿',objectives:'1. 各组音响设计方案在本周内完成评审与定稿。\n2. 反馈剧组排练进度。'},
+      {week:'第九周',date:'2026年10月19日（周一）',title:'灯光设计定稿',objectives:'1. 各组灯光设计方案在本周内完成评审与定稿。\n2. 确认灯光设备清单与实验室现有设备的匹配度。\n3. 反馈剧组排练进度。'},
+      {week:'第十周',date:'2026年10月26日（周一）',title:'设计元素总验收、经费使用方案讨论与审批',objectives:'1.集中验收舞美、服装、道具、灯光、音响五大设计线条的最终成果。\n2. 全体同学参与经费使用方案的讨论与审批。\n3. 反馈剧组排练进度。'},
+      {week:'第十一周',date:'2026年11月2日（周一）',title:'宣传方案定稿',objectives:'1. 宣传视觉体系（主视觉、海报、推文模板）定稿。\n2. 宣传预热活动方案以及大致预算费用。\n3. 反馈剧组排练进度。'},
+      {week:'第十二周',date:'2026年11月9日（周一）',title:'剧目整体连排与查缺补漏',objectives:'1. 完成全剧完整连排，检验各场次之间的衔接流畅度。\n2. 全面排查排练中暴露的表演、调度、技术配合等各类问题。\n3. 为下周启动的技术合成做好充分准备。'},
+      {week:'第十三周',date:'2026年11月16日（周一）',title:'技术合成（一）——上半场',objectives:'1. 完成上半场的技术合成，实现灯光、音响与表演的初步配合。\n2. 建立技术团队与表演团队之间的协作默契与沟通规范。\n3. 记录技术合成中发现的问题。'},
+      {week:'第十四周',date:'2026年11月23日（周一）',title:'技术合成（二）——下半场',objectives:'1. 完成下半场的技术合成，实现灯光、音响与表演的初步配合。\n2. 运用上周积累的经验，提高技术合成的效率与质量。\n3. 形成完整的技术合成问题清单，制定整改计划。'},
+      {week:'第十五周',date:'2026年11月30日（周一）',title:'带妆联排（一）',objectives:'1. 完成首次全要素带妆联排，检验服装、化妆与灯光音响的视觉综合效果。\n2. 全程录像，为后续精细化调整提供客观依据。\n3. 培养演员在完整技术条件下的表演适应能力与耐力。'},
+      {week:'第十六周',date:'2026年12月7日（周一）',title:'带妆联排（二）与演出前准备',objectives:'1. 落实第一次联排中发现的问题整改，完成第二次全要素带妆联排。\n2. 各技术部门完成演出岗位操作手册的定稿。\n3. 完成演出前的全部准备工作。'},
+      {week:'第十七周',date:'2026年12月14日（周一）',title:'展演',objectives:'1. 完成正式线下展演，呈现学期制作成果。\n2. 通过真实演出场景锻炼学生的临场应变能力与心理素质。\n3. 通过演后谈促进主创团队与观众的交流互动。'},
+      {week:'第十八周',date:'2026年12月21日（周一）',title:'课程总结与项目复盘',objectives:'1. 各组系统梳理本学期从剧本到演出的完整制作历程。\n2. 通过个人反思与团队复盘，帮助学生沉淀专业能力。\n3. 以同行评价促进学生的自我认知与专业成长。'}
+    ];
+
+    const WEEK_COLORS = {'第四周':'bg-blue-100 text-blue-700','第五周':'bg-cyan-100 text-cyan-700','第六周':'bg-teal-100 text-teal-700','第八周':'bg-indigo-100 text-indigo-700','第九周':'bg-violet-100 text-violet-700','第十周':'bg-fuchsia-100 text-fuchsia-700','第十一周':'bg-pink-100 text-pink-700','第十二周':'bg-rose-100 text-rose-700'};
+
+    let groups = [];
+    let chart;
+    let currentGroupId = null;
+    let socket;
+
+    // 获取用户名
+    function getUser() {
+      let name = document.getElementById('userName').value.trim();
+      if (!name) name = localStorage.getItem('user_name') || '匿名';
+      localStorage.setItem('user_name', name);
+      return name;
+    }
+
+    // 保存用户名
+    document.getElementById('userName').addEventListener('change', function() {
+      localStorage.setItem('user_name', this.value.trim());
+    });
+    // 恢复用户名
+    const savedName = localStorage.getItem('user_name');
+    if (savedName) document.getElementById('userName').value = savedName;
+
+    // Socket.IO 连接
+    function initSocket() {
+      socket = io();
+
+      socket.on('connect', () => {
+        const el = document.getElementById('syncStatus');
+        el.textContent = '✅ 已连接 · 实时同步中';
+        el.className = 'sync-connected';
+      });
+
+      socket.on('disconnect', () => {
+        const el = document.getElementById('syncStatus');
+        el.textContent = '❌ 连接断开 · 重试中...';
+        el.className = 'sync-disconnected';
+      });
+
+      socket.on('data-update', (data) => {
+        const el = document.getElementById('syncStatus');
+        el.textContent = '🔄 数据已更新';
+        el.className = 'sync-updating';
+        setTimeout(() => {
+          el.textContent = '✅ 已连接 · 实时同步中';
+          el.className = 'sync-connected';
+        }, 1000);
+
+        groups = data.groups;
+        render();
+        updateChart();
+      });
+    }
+
+    // Tab切换
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', (i===0&&tab==='progress')||(i===1&&tab==='schedule'));
+      });
+      document.getElementById('tab-progress').classList.toggle('active', tab==='progress');
+      document.getElementById('tab-schedule').classList.toggle('active', tab==='schedule');
+    }
+
+    function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+
+    function getCurrentWeekIndex() {
+      const now = new Date();
+      const startDate = new Date('2026-08-25');
+      const diffDays = Math.floor((now - startDate) / (1000*60*60*24));
+      return Math.max(0, Math.min(Math.floor(diffDays / 7) + 1, COURSE_PLAN.length - 1));
+    }
+
+    // 渲染课程计划
+    function renderSchedule() {
+      const container = document.getElementById('scheduleContainer');
+      const currentWeek = getCurrentWeekIndex();
+      container.innerHTML = COURSE_PLAN.map((item, idx) => {
+        const isCurrent = idx === currentWeek;
+        const isPast = idx < currentWeek;
+        const statusClass = isCurrent ? 'current-week' : '';
+        const opacity = isPast ? 'opacity-60' : '';
+        const badge = isPast ? '<span class="badge bg-green-100 text-green-600 text-xs">已过</span>'
+          : (isCurrent ? '<span class="badge bg-purple-600 text-white text-xs px-3">📍 本周</span>' : '');
+        const objHtml = item.objectives === '/'
+          ? '<span class="text-gray-400">—</span>'
+          : item.objectives.split('\n').map(l => '<div class="text-sm text-gray-700 leading-relaxed">'+escapeHtml(l)+'</div>').join('');
+        return '<div class="rounded-xl border border-gray-200 p-5 '+statusClass+' '+opacity+'" '+(isCurrent?'style="background-color:#ede9fe;border-left:4px solid #8b5cf6"':'')+'><div class="flex items-start gap-4"><div class="text-center min-w-[80px] shrink-0"><div class="text-sm font-bold text-purple-600">'+escapeHtml(item.week)+'</div><div class="text-xs text-gray-500 mt-1">'+escapeHtml(item.date)+'</div>'+badge+'</div><div class="flex-1 border-l-2 border-purple-200 pl-4"><h3 class="text-lg font-semibold text-gray-800 mb-2">'+escapeHtml(item.title)+'</h3><div class="space-y-1">'+objHtml+'</div></div></div></div>';
+      }).join('');
+    }
+
+    // 渲染统计
+    function renderStats() {
+      const total = groups.length;
+      const avg = Math.round(groups.reduce((s,g) => s+g.progress, 0) / total);
+      const completed = groups.filter(g => g.progress === 100).length;
+      const pending = groups.reduce((s,g) => s+g.todos.filter(t=>!t.done).length, 0);
+      document.getElementById('totalGroups').textContent = total;
+      document.getElementById('avgProgress').textContent = avg + '%';
+      document.getElementById('completedGroups').textContent = completed;
+      document.getElementById('pendingTodos').textContent = pending;
+    }
+
+    // 渲染各组
+    function renderGroups() {
+      const container = document.getElementById('groupsContainer');
+      container.innerHTML = groups.map(group => {
+        const barColor = group.progress===100?'from-green-500 to-emerald-500':group.progress>=50?'from-blue-500 to-cyan-500':'from-purple-500 to-pink-500';
+        const pendingTodos = group.todos.filter(t=>!t.done);
+        const doneTodos = group.todos.filter(t=>t.done);
+
+        const todoRows = [...group.todos]
+          .sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1; if(a.priority!==b.priority)return a.priority==='high'?-1:1; return new Date(a.created_at)-new Date(b.created_at);})
+          .map(t => {
+            const pTag = t.priority==='high'?'<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-1 shrink-0">紧急</span>':'';
+            const weekTag = t.week ? '<span class="week-tag '+((WEEK_COLORS[t.week])||'bg-gray-100 text-gray-600')+' ml-1 shrink-0">'+escapeHtml(t.week)+'</span>' : '';
+            return '<div class="todo-item flex items-center gap-2 px-3 py-2 rounded-lg '+(t.done?'todo-done':'')+'"><input type="checkbox" class="checkbox-custom" '+(t.done?'checked':'')+' onchange="toggleTodo('+group.id+','+t.id+')"><span class="flex-1 text-sm text-gray-700 flex items-center flex-wrap gap-1"><span class="todo-text">'+escapeHtml(t.text)+'</span>'+pTag+weekTag+'</span><span class="delete-btn" onclick="deleteTodo('+group.id+','+t.id+')" title="删除">&times;</span></div>';
+          }).join('');
+
+        const noteRows = [...group.notes]
+          .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+          .map(n=>'<div class="note-item flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50"><span class="text-amber-500 mt-0.5 text-sm shrink-0">⚠️</span><span class="flex-1 text-sm text-gray-700">'+escapeHtml(n.text)+'</span><span class="text-xs text-gray-400 shrink-0">'+new Date(n.created_at).toLocaleDateString('zh-CN')+'</span><span class="delete-btn" onclick="deleteNote('+group.id+','+n.id+')" title="删除">&times;</span></div>')
+          .join('');
+
+        const badges = [];
+        if(pendingTodos.length>0) badges.push('<span class="badge bg-purple-100 text-purple-600 px-2">'+pendingTodos.length+' 待办</span>');
+        if(doneTodos.length>0) badges.push('<span class="badge bg-green-100 text-green-600 px-2">'+doneTodos.length+' 已完成</span>');
+        if(group.notes.length>0) badges.push('<span class="badge bg-amber-100 text-amber-600 px-2">'+group.notes.length+' 备注</span>');
+
+        return '<div class="group-card bg-white rounded-xl shadow-md overflow-hidden border border-gray-100"><div class="p-4 md:p-6"><div class="flex flex-col md:flex-row md:items-center gap-4 mb-5"><div class="flex-1"><div class="flex items-center gap-3 mb-2 flex-wrap"><h3 class="text-xl font-bold text-gray-800">'+group.name+'</h3><div class="flex gap-1.5 flex-wrap">'+badges.join('')+'</div></div><div class="flex items-center gap-3"><div class="flex-1 bg-gray-200 rounded-full h-3.5 overflow-hidden"><div class="progress-bar bg-gradient-to-r '+barColor+' h-3.5 rounded-full" style="width:'+group.progress+'%"></div></div><span class="text-xl font-bold '+(group.progress===100?'text-green-600':'text-purple-600')+' min-w-[50px] text-right">'+group.progress+'%</span></div></div><div class="flex gap-2 shrink-0"><button onclick="openModal('+group.id+')" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm transition">更新进度</button></div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="bg-gray-50 rounded-xl p-4"><div class="section-label"><span class="text-purple-600">📋</span><span>待办事项</span>'+(pendingTodos.length>0?'<span class="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full">'+pendingTodos.length+'</span>':'')+'</div><div class="space-y-1 mb-3">'+todoRows+'</div><div class="flex gap-2"><input type="text" id="todo-input-'+group.id+'" class="inline-input flex-1" placeholder="添加待办，按回车" onkeypress="if(event.key===\'Enter\')addTodo('+group.id+')"><select id="todo-priority-'+group.id+'" class="text-xs border rounded-lg px-2 py-1 bg-white"><option value="normal">普通</option><option value="high">紧急</option></select></div></div><div class="rounded-xl p-4" style="background:rgba(255,251,235,0.5)"><div class="section-label"><span class="text-amber-500">📝</span><span>备注 / 注意事项</span>'+(group.notes.length>0?'<span class="text-xs bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded-full">'+group.notes.length+'</span>':'')+'</div><div class="space-y-1 mb-3">'+noteRows+'</div><div><textarea id="note-input-'+group.id+'" class="inline-textarea w-full" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key===\'Enter\')addNote('+group.id+')"></textarea></div></div></div></div></div>';
+      }).join('');
+    }
+
+    function render() { renderGroups(); renderStats(); }
+
+    // 进度更新
+    function openModal(id) {
+      currentGroupId = id;
+      const g = groups.find(x=>x.id===id);
+      document.getElementById('modalTitle').textContent = '更新: '+g.name;
+      document.getElementById('progressSlider').value = g.progress;
+      document.getElementById('progressValue').textContent = g.progress+'%';
+      document.getElementById('updateModal').classList.remove('hidden');
+    }
+    function closeModal() { document.getElementById('updateModal').classList.add('hidden'); }
+    function submitUpdate() {
+      const progress = parseInt(document.getElementById('progressSlider').value);
+      const user = getUser();
+      fetch('/api/progress/'+currentGroupId, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({progress, user})
+      });
+      closeModal();
+    }
+
+    // 待办操作
+    function toggleTodo(gid, tid) {
+      fetch('/api/todo/toggle/'+tid, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:getUser()})
+      });
+    }
+    function addTodo(gid) {
+      const inp = document.getElementById('todo-input-'+gid);
+      const pr = document.getElementById('todo-priority-'+gid).value;
+      const text = inp.value.trim(); if(!text) return;
+      fetch('/api/todo', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({group_id:gid, text, priority:pr, user:getUser()})
+      });
+      inp.value = '';
+    }
+    function deleteTodo(gid, tid) {
+      if(!confirm('确认删除这条待办？')) return;
+      fetch('/api/todo/'+tid, {
+        method:'DELETE', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:getUser()})
+      });
+    }
+
+    // 备注操作
+    function addNote(gid) {
+      const inp = document.getElementById('note-input-'+gid);
+      const text = inp.value.trim(); if(!text) return;
+      fetch('/api/note', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({group_id:gid, text, user:getUser()})
+      });
+      inp.value = '';
+    }
+    function deleteNote(gid, nid) {
+      if(!confirm('确认删除这条备注？')) return;
+      fetch('/api/note/'+nid, {
+        method:'DELETE', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:getUser()})
+      });
+    }
+
+    // 图表
+    function createChart() {
+      chart = new Chart(document.getElementById('progressChart').getContext('2d'), {
+        type:'bar', data:{labels:groups.map(g=>g.name), datasets:[{label:'进度 (%)',data:groups.map(g=>g.progress),backgroundColor:'rgba(139,92,246,0.8)',borderRadius:6}]},
+        options:{responsive:true, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}, plugins:{legend:{display:false}}}
+      });
+    }
+    function updateChart() {
+      if(!chart) return;
+      chart.data.datasets[0].data = groups.map(g=>g.progress);
+      chart.data.datasets[0].backgroundColor = groups.map(g=>g.progress===100?'rgba(34,197,94,0.8)':g.progress>=50?'rgba(59,130,246,0.8)':'rgba(139,92,246,0.8)');
+      chart.update();
+    }
+
+    document.getElementById('progressSlider').addEventListener('input', function(e) {
+      document.getElementById('progressValue').textContent = e.target.value+'%';
+    });
+
+    // 启动
+    initSocket();
+    renderSchedule();
+    // chart 创建等第一次数据到来
+    let chartCreated = false;
+    socket.on('data-update', () => {
+      if (!chartCreated && groups.length > 0) { createChart(); chartCreated = true; }
+    });
+  </script>
+</body>
+</html>
