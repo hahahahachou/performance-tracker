@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎭 演出项目进度追踪</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .progress-bar{transition:width .5s ease-in-out}
+    .group-card{transition:box-shadow .2s}
+    .group-card:hover{box-shadow:0 10px 25px rgba(0,0,0,.1)}
+    .todo-item:hover{background-color:#f9fafb}
+    .todo-done span.todo-text{text-decoration:line-through;color:#9ca3af}
+    .note-item{border-left:3px solid #f59e0b}
+    .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:9999px;font-size:12px;font-weight:600}
+    .section-label{font-size:13px;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+    .inline-input{font-size:13px;padding:6px 10px;border:1.5px dashed #d1d5db;border-radius:8px;outline:none;width:100%;transition:border-color .2s}
+    .inline-input:focus{border-color:#8b5cf6;border-style:solid}
+    .inline-textarea{font-size:13px;padding:6px 10px;border:1.5px dashed #fbbf24;border-radius:8px;outline:none;width:100%;resize:none;transition:border-color .2s}
+    .inline-textarea:focus{border-color:#f59e0b;border-style:solid}
+    .delete-btn{color:#d1d5db;cursor:pointer;font-size:16px;line-height:1}
+    .delete-btn:hover{color:#ef4444}
+    .checkbox-custom{width:18px;height:18px;accent-color:#8b5cf6;cursor:pointer;flex-shrink:0}
+    .week-tag{font-size:11px;padding:1px 8px;border-radius:4px;font-weight:600;white-space:nowrap}
+    .tab-btn{cursor:pointer;padding:10px 20px;border-radius:8px 8px 0 0;font-weight:600;transition:all .2s;user-select:none}
+    .tab-btn.active{background:#fff;color:#8b5cf6;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+    .tab-btn:not(.active){background:#e5e7eb;color:#6b7280}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    #syncStatus{position:fixed;top:10px;right:10px;z-index:100;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;transition:all .3s}
+    .sync-connected{background:#d1fae5;color:#065f46}
+    .sync-disconnected{background:#fee2e2;color:#991b1b}
+    .sync-updating{background:#fef3c7;color:#92400e}
+    .flash{animation:flash-bg 1s ease-out}
+    @keyframes flash-bg{0%{background-color:#ede9fe}100%{background-color:transparent}}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+  <div id="syncStatus" class="sync-disconnected">⏳ 连接中...</div>
+
+  <div class="container mx-auto px-4 py-8 max-w-7xl">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">🎭 演出项目进度追踪</h1>
+      <p class="text-gray-600">《演出制作实务（3）》 · 云端同步版</p>
+    </div>
+
+    <!-- 用户名 -->
+    <div class="flex justify-center mb-6">
+      <div class="bg-white rounded-lg shadow px-4 py-2 flex items-center gap-2">
+        <span class="text-sm text-gray-500">你的名字：</span>
+        <input type="text" id="userName" class="border-0 outline-none text-sm text-purple-600 font-semibold w-24 bg-transparent" placeholder="点击输入" value="">
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-1 mb-0">
+      <div class="tab-btn active" onclick="switchTab('progress')">📊 各组进度</div>
+      <div class="tab-btn" onclick="switchTab('schedule')">📅 课程计划</div>
+    </div>
+
+    <!-- Tab1: 各组进度 -->
+    <div id="tab-progress" class="tab-content active bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-purple-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-purple-600" id="totalGroups">11</div><div class="text-gray-600 mt-1 text-sm">工作组总数</div></div>
+        <div class="bg-blue-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-blue-600" id="avgProgress">0%</div><div class="text-gray-600 mt-1 text-sm">平均进度</div></div>
+        <div class="bg-green-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-green-600" id="completedGroups">0</div><div class="text-gray-600 mt-1 text-sm">已完成组数</div></div>
+        <div class="bg-orange-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-orange-600" id="pendingTodos">0</div><div class="text-gray-600 mt-1 text-sm">待办事项</div></div>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-4 md:p-6 mb-6"><h2 class="text-lg font-semibold mb-4">📊 进度总览</h2><canvas id="progressChart"></canvas></div>
+      <div class="flex flex-col gap-6" id="groupsContainer"></div>
+    </div>
+
+    <!-- Tab2: 课程计划 -->
+    <div id="tab-schedule" class="tab-content bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+            <tr><th class="px-4 py-3">周次</th><th class="px-4 py-3">主要工作</th><th class="px-4 py-3">负责组别</th></tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 进度更新弹窗 -->
+  <div id="updateModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm">
+      <h3 id="modalTitle" class="text-lg font-bold mb-4">更新进度</h3>
+      <div class="flex items-center gap-4 mb-4">
+        <input type="range" id="progressSlider" min="0" max="100" step="5" value="0" class="flex-1 accent-purple-500">
+        <span id="progressValue" class="text-2xl font-bold text-purple-600 w-16 text-right">0%</span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="closeModal()" class="flex-1 py-2 rounded-lg bg-gray-100 text-gray-600 font-semibold">取消</button>
+        <button onclick="submitUpdate()" class="flex-1 py-2 rounded-lg bg-purple-500 text-white font-semibold">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // GitHub API 配置
+    const GITHUB_TOKEN = ''; // 留空则只读，需要写入时配置
+    const GITHUB_REPO = 'hahahahachou/performance-tracker';
+    const DATA_PATH = 'data/groups.json';
+    const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/${DATA_PATH}`;
+
+    let groups = [];
+    let chart = null;
+    let currentGroupId = null;
+    let dataSha = null;
+    let syncTimer = null;
+
+    // 课程计划数据
+    const schedule = [
+      {week:'第四周', tasks:'舞台美术设计方案定稿；结合场地测量制作方案', groups:'舞美和道具设计组'},
+      {week:'第五周', tasks:'服装设计方案定稿；结合演员身形试装与尺寸记录', groups:'服化组'},
+      {week:'第六周', tasks:'道具清单终审；确定代用道具', groups:'舞美和道具设计组'},
+      {week:'第八周', tasks:'音响设计方案评审与定稿', groups:'音效组'},
+      {week:'第九周', tasks:'灯光设计方案评审与定稿；确认设备清单匹配度', groups:'灯光组'},
+      {week:'第十周', tasks:'集中验收五大设计线条成果；经费使用方案讨论审批', groups:'导演组、执行制作组'},
+      {week:'第十一周', tasks:'宣传视觉体系定稿；宣传预热方案及预算', groups:'宣传组'},
+      {week:'第十二周', tasks:'完成全剧连排；排查各类问题；为技术合成做准备', groups:'导演组、执行制作组'}
+    ];
+
+    // 同步状态
+    function setSyncStatus(status, text) {
+      const el = document.getElementById('syncStatus');
+      el.className = status === 'connected' ? 'sync-connected' : status === 'updating' ? 'sync-updating' : 'sync-disconnected';
+      el.textContent = text;
+    }
+
+    // 从GitHub读取数据
+    async function fetchData() {
+      try {
+        setSyncStatus('updating', '🔄 同步中...');
+        const res = await fetch(GITHUB_API);
+        if (!res.ok) throw new Error('GitHub API error: ' + res.status);
+        const data = await res.json();
+        dataSha = data.sha;
+        const content = JSON.parse(atob(data.content));
+        groups = content.groups || [];
+        setSyncStatus('connected', '✅ 已同步');
+        return true;
+      } catch (e) {
+        console.error('Fetch error:', e);
+        setSyncStatus('disconnected', '❌ 同步失败');
+        return false;
+      }
+    }
+
+    // 保存数据到GitHub
+    async function saveData() {
+      if (!GITHUB_TOKEN) {
+        alert('当前为只读模式，请联系管理员配置写入权限');
+        return false;
+      }
+      try {
+        setSyncStatus('updating', '💾 保存中...');
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify({groups}, null, 2))));
+        const res = await fetch(GITHUB_API, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({
+            message: 'Update data',
+            content: content,
+            sha: dataSha,
+            branch: 'gh-pages'
+          })
+        });
+        if (!res.ok) throw new Error('Save error: ' + res.status);
+        const result = await res.json();
+        dataSha = result.content.sha;
+        setSyncStatus('connected', '✅ 已保存');
+        return true;
+      } catch (e) {
+        console.error('Save error:', e);
+        setSyncStatus('disconnected', '❌ 保存失败');
+        alert('保存失败: ' + e.message);
+        return false;
+      }
+    }
+
+    // 自动同步
+    function startAutoSync() {
+      if (syncTimer) clearInterval(syncTimer);
+      syncTimer = setInterval(async () => {
+        await fetchData();
+        render();
+        updateChart();
+      }, 5000); // 每5秒同步
+    }
+
+    function getUser() {
+      return document.getElementById('userName').value.trim() || '匿名用户';
+    }
+
+    // 渲染函数
+    function renderStats() {
+      const total = groups.length;
+      const avg = total > 0 ? Math.round(groups.reduce((s,g) => s+g.progress, 0) / total) : 0;
+      const completed = groups.filter(g => g.progress >= 100).length;
+      const pending = groups.reduce((s,g) => s + g.todos.filter(t=>!t.done).length, 0);
+      document.getElementById('totalGroups').textContent = total;
+      document.getElementById('avgProgress').textContent = avg + '%';
+      document.getElementById('completedGroups').textContent = completed;
+      document.getElementById('pendingTodos').textContent = pending;
+    }
+
+    function renderGroups() {
+      const container = document.getElementById('groupsContainer');
+      container.innerHTML = groups.map(group => {
+        const pendingTodos = group.todos.filter(t => !t.done);
+        const completedTodos = group.todos.filter(t => t.done);
+        const weekColors = {'第四周':'bg-blue-100 text-blue-700','第五周':'bg-green-100 text-green-700','第六周':'bg-yellow-100 text-yellow-700','第八周':'bg-orange-100 text-orange-700','第九周':'bg-red-100 text-red-700','第十周':'bg-purple-100 text-purple-700','第十一周':'bg-pink-100 text-pink-700','第十二周':'bg-indigo-100 text-indigo-700'};
+
+        const todoRows = group.todos.map(t => `
+          <div class="todo-item flex items-center gap-2 py-1.5 px-2 rounded-lg ${t.done?'todo-done':''}">
+            <input type="checkbox" class="checkbox-custom" ${t.done?'checked':''} onchange="toggleTodo(${group.id},${t.id})">
+            <span class="todo-text flex-1 text-sm">${t.text}</span>
+            ${t.week?`<span class="week-tag ${weekColors[t.week]||'bg-gray-100 text-gray-600'}">${t.week}</span>`:''}
+            <span class="delete-btn" onclick="deleteTodo(${group.id},${t.id})">×</span>
+          </div>
+        `).join('');
+
+        const noteRows = (group.notes||[]).map(n => `
+          <div class="note-item pl-3 py-1">
+            <div class="flex justify-between items-start">
+              <span class="text-sm text-gray-700">${n.text}</span>
+              <span class="delete-btn" onclick="deleteNote(${group.id},${n.id})">×</span>
+            </div>
+          </div>
+        `).join('');
+
+        return `
+          <div class="group-card bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg font-bold text-purple-600">${group.id}</div>
+                <h3 class="text-base font-bold text-gray-800">${group.name}</h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-2xl font-bold ${group.progress>=100?'text-green-500':group.progress>=50?'text-blue-500':'text-purple-500'}">${group.progress}%</span>
+                <button onclick="openModal(${group.id})" class="text-xs bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg font-semibold hover:bg-purple-100">更新</button>
+              </div>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2.5 mb-4"><div class="progress-bar bg-purple-500 h-2.5 rounded-full" style="width:${group.progress}%"></div></div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="bg-gray-50 rounded-xl p-4">
+                <div class="section-label"><span class="text-purple-600">📋</span><span>待办事项</span>${pendingTodos.length>0?'<span class="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full">'+pendingTodos.length+'</span>':''}</div>
+                <div class="space-y-1 mb-3">${todoRows}</div>
+                <div class="flex gap-2">
+                  <input type="text" id="todo-input-${group.id}" class="inline-input flex-1" placeholder="添加待办，按回车" onkeypress="if(event.key==='Enter')addTodo(${group.id})">
+                  <select id="todo-priority-${group.id}" class="text-xs border rounded-lg px-2 py-1 bg-white"><option value="normal">普通</option><option value="high">紧急</option></select>
+                </div>
+              </div>
+              <div class="rounded-xl p-4" style="background:rgba(255,251,235,0.5)">
+                <div class="section-label"><span class="text-amber-500">📝</span><span>备注 / 注意事项</span>${(group.notes||[]).length>0?'<span class="text-xs bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded-full">'+group.notes.length+'</span>':''}</div>
+                <div class="space-y-1 mb-3">${noteRows}</div>
+                <div><textarea id="note-input-${group.id}" class="inline-textarea w-full" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key==='Enter')addNote(${group.id})"></textarea></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSchedule() {
+      document.getElementById('scheduleBody').innerHTML = schedule.map(s => `
+        <tr class="border-b border-gray-100">
+          <td class="px-4 py-3 font-semibold text-purple-600">${s.week}</td>
+          <td class="px-4 py-3">${s.tasks}</td>
+          <td class="px-4 py-3 text-gray-600">${s.groups}</td>
+        </tr>
+      `).join('');
+    }
+
+    function render() { renderGroups(); renderStats(); }
+
+    // 进度更新
+    function openModal(id) {
+      currentGroupId = id;
+      const g = groups.find(x=>x.id===id);
+      document.getElementById('modalTitle').textContent = '更新: '+g.name;
+      document.getElementById('progressSlider').value = g.progress;
+      document.getElementById('progressValue').textContent = g.progress+'%';
+      document.getElementById('updateModal').classList.remove('hidden');
+    }
+    function closeModal() { document.getElementById('updateModal').classList.add('hidden'); }
+    async function submitUpdate() {
+      const progress = parseInt(document.getElementById('progressSlider').value);
+      const g = groups.find(x=>x.id===currentGroupId);
+      if (g) {
+        g.progress = progress;
+        g.updated_at = new Date().toISOString();
+        await saveData();
+        render();
+        updateChart();
+      }
+      closeModal();
+    }
+
+    // 待办操作
+    async function toggleTodo(gid, tid) {
+      const g = groups.find(x=>x.id===gid);
+      if (!g) return;
+      const t = g.todos.find(x=>x.id===tid);
+      if (t) {
+        t.done = !t.done;
+        await saveData();
+        render();
+      }
+    }
+    async function addTodo(gid) {
+      const inp = document.getElementById('todo-input-'+gid);
+      const pr = document.getElementById('todo-priority-'+gid).value;
+      const text = inp.value.trim();
+      if (!text) return;
+      const g = groups.find(x=>x.id===gid);
+      if (!g) return;
+      const maxId = groups.reduce((m, gr) => Math.max(m, ...gr.todos.map(t => t.id)), 0);
+      g.todos.push({ id: maxId+1, text, priority: pr, week: '', done: false, created_at: new Date().toISOString() });
+      inp.value = '';
+      await saveData();
+      render();
+    }
+    async function deleteTodo(gid, tid) {
+      if (!confirm('确认删除这条待办？')) return;
+      const g = groups.find(x=>x.id===gid);
+      if (!g) return;
+      g.todos = g.todos.filter(t => t.id !== tid);
+      await saveData();
+      render();
+    }
+
+    // 备注操作
+    async function addNote(gid) {
+      const inp = document.getElementById('note-input-'+gid);
+      const text = inp.value.trim();
+      if (!text) return;
+      const g = groups.find(x=>x.id===gid);
+      if (!g) return;
+      if (!g.notes) g.notes = [];
+      const maxId = groups.reduce((m, gr) => Math.max(m, ...(gr.notes||[]).map(n => n.id)), 0);
+      g.notes.push({ id: maxId+1, text, created_at: new Date().toISOString() });
+      inp.value = '';
+      await saveData();
+      render();
+    }
+    async function deleteNote(gid, nid) {
+      if (!confirm('确认删除这条备注？')) return;
+      const g = groups.find(x=>x.id===gid);
+      if (!g || !g.notes) return;
+      g.notes = g.notes.filter(n => n.id !== nid);
+      await saveData();
+      render();
+    }
+
+    // 图表
+    function createChart() {
+      chart = new Chart(document.getElementById('progressChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: groups.map(g=>g.name),
+          datasets: [{
+            label: '进度 (%)',
+            data: groups.map(g=>g.progress),
+            backgroundColor: 'rgba(139,92,246,0.8)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v=>v+'%' } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+    function updateChart() {
+      if (!chart) return;
+      chart.data.datasets[0].data = groups.map(g=>g.progress);
+      chart.data.datasets[0].backgroundColor = groups.map(g=>g.progress===100?'rgba(34,197,94,0.8)':g.progress>=50?'rgba(59,130,246,0.8)':'rgba(139,92,246,0.8)');
+      chart.update();
+    }
+
+    // Tab切换
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-'+tab).classList.add('active');
+    }
+
+    document.getElementById('progressSlider').addEventListener('input', function(e) {
+      document.getElementById('progressValue').textContent = e.target.value+'%';
+    });
+
+    // 启动
+    async function init() {
+      const ok = await fetchData();
+      if (ok) {
+        render();
+        renderSchedule();
+        createChart();
+        startAutoSync();
+      } else {
+        setTimeout(init, 3000);
+      }
+    }
+    init();
+  </script>
+</body>
+</html>
