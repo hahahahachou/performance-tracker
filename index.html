@@ -4,603 +4,501 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>演出项目进度追踪</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- 移除 Tailwind CDN，使用内联 CSS -->
   <style>
-    *{box-sizing:border-box}
-    .progress-bar{transition:width .5s ease-in-out}
-    .group-card{transition:box-shadow .2s}
-    .group-card:hover{box-shadow:0 10px 25px rgba(0,0,0,.1)}
-    .todo-item:hover{background-color:#f9fafb}
-    .todo-done span.todo-text{text-decoration:line-through;color:#9ca3af}
-    .note-item{border-left:3px solid #f59e0b}
-    .section-label{font-size:13px;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:6px;margin-bottom:8px}
-    .inline-input{font-size:13px;padding:6px 10px;border:1.5px dashed #d1d5db;border-radius:8px;outline:none;width:100%;transition:border-color .2s}
-    .inline-input:focus{border-color:#8b5cf6;border-style:solid}
-    .inline-textarea{font-size:13px;padding:6px 10px;border:1.5px dashed #fbbf24;border-radius:8px;outline:none;width:100%;resize:none;transition:border-color .2s}
-    .inline-textarea:focus{border-color:#f59e0b;border-style:solid}
-    .delete-btn{color:#d1d5db;cursor:pointer;font-size:16px;line-height:1;flex-shrink:0}
-    .delete-btn:hover{color:#ef4444}
-    .checkbox-custom{width:18px;height:18px;accent-color:#8b5cf6;cursor:pointer;flex-shrink:0}
-    .week-tag{font-size:11px;padding:1px 8px;border-radius:4px;font-weight:600;white-space:nowrap}
-    .tab-btn{cursor:pointer;padding:10px 20px;border-radius:8px 8px 0 0;font-weight:600;transition:all .2s;user-select:none}
-    .tab-btn.active{background:#fff;color:#8b5cf6;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
-    .tab-btn:not(.active){background:#e5e7eb;color:#6b7280}
-    .tab-content{display:none}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:linear-gradient(135deg,#f5f3ff 0%,#eff6ff 100%);min-height:100vh;color:#1f2937}
+    .container{max-width:1280px;margin:0 auto;padding:2rem 1rem}
+    h1{font-size:2rem;font-weight:700;text-align:center;color:#1f2937;margin-bottom:.5rem}
+    .subtitle{text-align:center;color:#6b7280;margin-bottom:1.5rem}
+    .header-card{background:#fff;border-radius:.5rem;padding:.75rem 1rem;display:flex;align-items:center;gap:.5rem;justify-content:center;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .header-card span{font-size:.875rem;color:#6b7280}
+    .header-card input{border:0;outline:0;font-size:.875rem;font-weight:600;color:#7c3aed;background:transparent;width:6rem}
+    .tabs{display:flex;gap:.25rem;margin-bottom:0}
+    .tab-btn{cursor:pointer;padding:.625rem 1.25rem;border-radius:.5rem .5rem 0 0;font-weight:600;transition:all .2s;background:#e5e7eb;color:#6b7280}
+    .tab-btn.active{background:#fff;color:#7c3aed;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+    .tab-content{display:none;background:#fff;border-radius:0 .75rem .75rem .75rem;box-shadow:0 4px 6px rgba(0,0,0,.05);padding:1rem 1.5rem}
     .tab-content.active{display:block}
-    #syncStatus{position:fixed;top:10px;right:10px;z-index:100;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;transition:all .3s}
-    .sync-connected{background:#d1fae5;color:#065f46}
-    .sync-disconnected{background:#fee2e2;color:#991b1b}
-    .sync-updating{background:#fef3c7;color:#92400e}
-    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:50;display:none;align-items:center;justify-content:center;padding:1rem}
+    .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem}
+    @media(min-width:768px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
+    .stat-card{border-radius:.75rem;padding:1rem;text-align:center}
+    .stat-card.purple{background:#f5f3ff}
+    .stat-card.blue{background:#eff6ff}
+    .stat-card.green{background:#f0fdf4}
+    .stat-card.orange{background:#fff7ed}
+    .stat-value{font-size:1.5rem;font-weight:700}
+    .stat-value.purple{color:#7c3aed}
+    .stat-value.blue{color:#2563eb}
+    .stat-value.green{color:#16a34a}
+    .stat-value.orange{color:#ea580c}
+    .stat-label{font-size:.75rem;color:#6b7280;margin-top:.25rem}
+    .chart-container{background:#f9fafb;border-radius:.75rem;padding:1rem 1.5rem;margin-bottom:1.5rem}
+    .chart-container h2{font-size:1.125rem;font-weight:600;margin-bottom:1rem}
+    .chart-wrapper{position:relative;height:300px}
+    .group-card{background:#fff;border:1px solid #f3f4f6;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1rem;transition:box-shadow .2s}
+    .group-card:hover{box-shadow:0 10px 25px rgba(0,0,0,.08)}
+    .group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+    .group-title{display:flex;align-items:center;gap:.75rem}
+    .group-icon{width:2.5rem;height:2.5rem;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:1.125rem;font-weight:700;color:#7c3aed}
+    .group-name{font-size:1rem;font-weight:700;color:#1f2937}
+    .group-progress{display:flex;align-items:center;gap:.5rem}
+    .progress-value{font-size:1.5rem;font-weight:700}
+    .progress-value.high{color:#16a34a}
+    .progress-value.mid{color:#2563eb}
+    .progress-value.low{color:#7c3aed}
+    .update-btn{font-size:.75rem;background:#f3e8ff;color:#7c3aed;padding:.375rem .75rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0;transition:background .2s}
+    .update-btn:hover{background:#e9d5ff}
+    .progress-bar-container{width:100%;height:.625rem;background:#f3f4f6;border-radius:9999px;margin-bottom:1rem}
+    .progress-bar{height:100%;border-radius:9999px;transition:width .5s}
+    .progress-bar.high{background:#16a34a}
+    .progress-bar.mid{background:#2563eb}
+    .progress-bar.low{background:#7c3aed}
+    .group-body{display:grid;gap:1rem}
+    @media(min-width:768px){.group-body{grid-template-columns:1fr 1fr}}
+    .todo-section{background:#f9fafb;border-radius:.75rem;padding:1rem}
+    .note-section{background:#fffbeb;border-radius:.75rem;padding:1rem}
+    .section-label{font-size:.8125rem;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:.375rem;margin-bottom:.5rem}
+    .section-label .count{font-size:.6875rem;background:#e9d5ff;color:#7c3aed;padding:.125rem .375rem;border-radius:9999px}
+    .section-label .count.amber{background:#fef3c7;color:#d97706}
+    .todo-list{margin-bottom:.75rem}
+    .todo-item{display:flex;align-items:center;gap:.5rem;padding:.375rem .5rem;border-radius:.5rem;transition:background .2s}
+    .todo-item:hover{background:#f3f4f6}
+    .todo-done span{color:#9ca3af;text-decoration:line-through}
+    .todo-checkbox{width:1.125rem;height:1.125rem;accent-color:#7c3aed;cursor:pointer;flex-shrink:0}
+    .todo-text{flex:1;font-size:.875rem}
+    .week-tag{font-size:.6875rem;padding:.125rem .5rem;border-radius:.25rem;font-weight:600;white-space:nowrap;flex-shrink:0}
+    .week-tag.w4{background:#dbeafe;color:#1d4ed8}
+    .week-tag.w5{background:#dcfce7;color:#15803d}
+    .week-tag.w6{background:#fef9c3;color:#a16207}
+    .week-tag.w8{background:#ffedd5;color:#c2410c}
+    .week-tag.w9{background:#fee2e2;color:#b91c1c}
+    .week-tag.w10{background:#f3e8ff;color:#7c3aed}
+    .week-tag.w11{background:#fce7f3;color:#be185d}
+    .week-tag.w12{background:#e0e7ff;color:#4338ca}
+    .delete-btn{color:#d1d5db;cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0}
+    .delete-btn:hover{color:#ef4444}
+    .add-todo{display:flex;gap:.5rem}
+    .inline-input{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #d1d5db;border-radius:.5rem;outline:0;flex:1;transition:border-color .2s}
+    .inline-input:focus{border-color:#7c3aed;border-style:solid}
+    .priority-select{font-size:.75rem;border:1px solid #d1d5db;border-radius:.5rem;padding:.25rem .5rem;background:#fff}
+    .note-list{margin-bottom:.75rem}
+    .note-item{border-left:3px solid #f59e0b;padding-left:.75rem;padding:.25rem 0}
+    .note-item-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+    .note-text{font-size:.875rem;color:#374151;flex:1}
+    .inline-textarea{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #fbbf24;border-radius:.5rem;outline:0;width:100%;resize:none;transition:border-color .2s;font-family:inherit}
+    .inline-textarea:focus{border-color:#f59e0b;border-style:solid}
+    table{width:100%;border-collapse:collapse;font-size:.875rem}
+    th{background:#f9fafb;text-align:left;padding:.75rem 1rem;font-weight:600;color:#374151;text-transform:uppercase;font-size:.75rem;border-bottom:1px solid #e5e7eb}
+    td{padding:.75rem 1rem;border-bottom:1px solid #f3f4f6}
+    td:first-child{font-weight:600;color:#7c3aed}
+    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:1rem}
     .modal-overlay.show{display:flex}
-    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:200;transition:all .3s;opacity:0;pointer-events:none}
-    .toast.show{opacity:1;pointer-events:auto}
-    .toast-success{background:#d1fae5;color:#065f46}
-    .toast-error{background:#fee2e2;color:#991b1b}
-    .toast-info{background:#dbeafe;color:#1e40af}
-    .refresh-btn{position:fixed;bottom:20px;right:20px;z-index:100;width:48px;height:48px;border-radius:50%;background:#8b5cf6;color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(139,92,246,0.4);display:flex;align-items:center;justify-content:center;transition:all .2s}
-    .refresh-btn:hover{background:#7c3aed;transform:scale(1.1)}
-    .refresh-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+    .modal-box{background:#fff;border-radius:1rem;padding:1.5rem;width:100%;max-width:20rem}
+    .modal-title{font-size:1.125rem;font-weight:700;margin-bottom:1rem}
+    .modal-slider{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+    .slider-input{flex:1;accent-color:#7c3aed}
+    .slider-value{font-size:1.5rem;font-weight:700;color:#7c3aed;width:4rem;text-align:right}
+    .modal-actions{display:flex;gap:.5rem}
+    .btn{flex:1;padding:.5rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0;transition:all .2s}
+    .btn-cancel{background:#f3f4f6;color:#6b7280}
+    .btn-cancel:hover{background:#e5e7eb}
+    .btn-confirm{background:#7c3aed;color:#fff}
+    .btn-confirm:hover{background:#6d28d9}
+    #syncStatus{position:fixed;top:.625rem;right:.625rem;z-index:100;font-size:.75rem;padding:.25rem .75rem;border-radius:9999px;font-weight:600;transition:all .3s}
+    .sync-ok{background:#d1fae5;color:#065f46}
+    .sync-wait{background:#fef3c7;color:#92400e}
+    .sync-err{background:#fee2e2;color:#991b1b}
+    #toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);padding:.625rem 1.5rem;border-radius:.75rem;font-size:.875rem;font-weight:600;z-index:200;transition:all .3s;opacity:0;pointer-events:none;white-space:nowrap}
+    #toast.show{opacity:1;pointer-events:auto}
+    #toast.success{background:#d1fae5;color:#065f46}
+    #toast.error{background:#fee2e2;color:#991b1b}
+    #toast.info{background:#dbeafe;color:#1e40af}
+    #refreshBtn{position:fixed;bottom:1.25rem;right:1.25rem;z-index:100;width:3rem;height:3rem;border-radius:50%;background:#7c3aed;color:#fff;border:0;font-size:1.25rem;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center;transition:all .2s}
+    #refreshBtn:hover{background:#6d28d9;transform:scale(1.1)}
+    #refreshBtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .spinner{animation:spin 1s linear infinite}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.9);z-index:150;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
-    .loading-overlay .spinner-ring{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#8b5cf6;border-radius:50%;animation:spin .8s linear infinite}
+    #loadingOverlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);z-index:150;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem}
+    .loading-spinner{width:2.5rem;height:2.5rem;border:4px solid #e5e7eb;border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite}
+    .loading-text{color:#6b7280;font-weight:500}
+    .hidden{display:none!important}
   </style>
 </head>
-<body class="bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+<body>
 
   <!-- 加载动画 -->
-  <div id="loadingOverlay" class="loading-overlay">
-    <div class="spinner-ring"></div>
-    <div class="text-gray-600 font-medium" id="loadingText">正在加载数据...</div>
+  <div id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">正在加载数据...</div>
   </div>
 
   <!-- 同步状态 -->
-  <div id="syncStatus" class="sync-disconnected">连接中...</div>
+  <div id="syncStatus" class="sync-err">连接中...</div>
 
   <!-- Toast 提示 -->
-  <div id="toast" class="toast"></div>
+  <div id="toast"></div>
 
   <!-- 主内容 -->
-  <div class="container mx-auto px-4 py-8 max-w-7xl">
-    <div class="text-center mb-6">
-      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">演出项目进度追踪</h1>
-      <p class="text-gray-600">《演出制作实务（3）》 · 云端同步版</p>
+  <div class="container">
+    <h1>演出项目进度追踪</h1>
+    <p class="subtitle">《演出制作实务（3）》· 云端同步版</p>
+
+    <div class="header-card">
+      <span>你的名字：</span>
+      <input type="text" id="userName" placeholder="点击输入">
     </div>
-    <div class="flex justify-center mb-6">
-      <div class="bg-white rounded-lg shadow px-4 py-2 flex items-center gap-2">
-        <span class="text-sm text-gray-500">你的名字：</span>
-        <input type="text" id="userName" class="border-0 outline-none text-sm text-purple-600 font-semibold w-24 bg-transparent" placeholder="点击输入">
-      </div>
-    </div>
-    <div class="flex gap-1 mb-0">
+
+    <div class="tabs">
       <div class="tab-btn active" onclick="switchTab('progress',this)">各组进度</div>
       <div class="tab-btn" onclick="switchTab('schedule',this)">课程计划</div>
     </div>
-    <div id="tab-progress" class="tab-content active bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-purple-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-purple-600" id="totalGroups">11</div><div class="text-gray-600 mt-1 text-sm">工作组总数</div></div>
-        <div class="bg-blue-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-blue-600" id="avgProgress">0%</div><div class="text-gray-600 mt-1 text-sm">平均进度</div></div>
-        <div class="bg-green-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-green-600" id="completedGroups">0</div><div class="text-gray-600 mt-1 text-sm">已完成组数</div></div>
-        <div class="bg-orange-50 rounded-xl p-4 text-center"><div class="text-2xl md:text-3xl font-bold text-orange-600" id="pendingTodos">0</div><div class="text-gray-600 mt-1 text-sm">待办事项</div></div>
+
+    <div id="tab-progress" class="tab-content active">
+      <div class="stats-grid">
+        <div class="stat-card purple"><div class="stat-value purple" id="totalGroups">11</div><div class="stat-label">工作组总数</div></div>
+        <div class="stat-card blue"><div class="stat-value blue" id="avgProgress">0%</div><div class="stat-label">平均进度</div></div>
+        <div class="stat-card green"><div class="stat-value green" id="completedGroups">0</div><div class="stat-label">已完成组数</div></div>
+        <div class="stat-card orange"><div class="stat-value orange" id="pendingTodos">0</div><div class="stat-label">待办事项</div></div>
       </div>
-      <div class="bg-gray-50 rounded-xl p-4 md:p-6 mb-6"><h2 class="text-lg font-semibold mb-4">进度总览</h2><canvas id="progressChart"></canvas></div>
-      <div class="flex flex-col gap-6" id="groupsContainer"></div>
+
+      <div class="chart-container">
+        <h2>进度总览</h2>
+        <div class="chart-wrapper">
+          <canvas id="progressChart"></canvas>
+        </div>
+      </div>
+
+      <div id="groupsContainer"></div>
     </div>
-    <div id="tab-schedule" class="tab-content bg-white rounded-b-xl rounded-tr-xl shadow-md p-4 md:p-6">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
-          <thead class="bg-gray-50 text-gray-700 text-xs uppercase"><tr><th class="px-4 py-3">周次</th><th class="px-4 py-3">主要工作</th><th class="px-4 py-3">负责组别</th></tr></thead>
-          <tbody id="scheduleBody"></tbody>
-        </table>
-      </div>
+
+    <div id="tab-schedule" class="tab-content">
+      <table>
+        <thead><tr><th>周次</th><th>主要工作</th><th>负责组别</th></tr></thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
     </div>
   </div>
 
   <!-- 进度弹窗 -->
   <div id="updateModal" class="modal-overlay">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-sm">
-      <h3 id="modalTitle" class="text-lg font-bold mb-4">更新进度</h3>
-      <div class="flex items-center gap-4 mb-4">
-        <input type="range" id="progressSlider" min="0" max="100" step="5" value="0" class="flex-1 accent-purple-500">
-        <span id="progressValue" class="text-2xl font-bold text-purple-600 w-16 text-right">0%</span>
+    <div class="modal-box">
+      <div class="modal-title" id="modalTitle">更新进度</div>
+      <div class="modal-slider">
+        <input type="range" id="progressSlider" min="0" max="100" step="5" value="0" class="slider-input">
+        <span class="slider-value" id="progressValue">0%</span>
       </div>
-      <div class="flex gap-2">
-        <button onclick="closeModal()" class="flex-1 py-2 rounded-lg bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200">取消</button>
-        <button onclick="submitUpdate()" class="flex-1 py-2 rounded-lg bg-purple-500 text-white font-semibold hover:bg-purple-600">确认</button>
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn btn-confirm" onclick="submitUpdate()">确认</button>
       </div>
     </div>
   </div>
 
-  <!-- 强制刷新按钮 -->
-  <button id="refreshBtn" class="refresh-btn" title="强制刷新数据" onclick="forceRefresh()">
-    <span id="refreshIcon">&#8635;</span>
-  </button>
+  <!-- 刷新按钮 -->
+  <button id="refreshBtn" title="强制刷新数据" onclick="forceRefresh()">&#8635;</button>
 
-<script>
-// ===== 配置 =====
-var REPO = 'hahahahachou/performance-tracker';
-var BRANCH = 'main';
-var DATA_PATH = 'data/groups.json';
-// 使用 raw 地址读取（无需认证，速度快）
-var RAW_URL = 'https://raw.githubusercontent.com/' + REPO + '/' + BRANCH + '/' + DATA_PATH;
-// 使用 API 写入（需要 token）
-var API_URL = 'https://api.github.com/repos/' + REPO + '/contents/' + DATA_PATH;
-var GITHUB_TOKEN = atob('Z2hwX0dtQktaQXlNMmVkQkdKdVN3eVN5eW1ublB1Y1FseTFpZnFobQ==');
+  <!-- Chart.js 延迟加载 -->
+  <script>
+    // 配置
+    var REPO='hahahahachou/performance-tracker',BRANCH='main',DATA_PATH='data/groups.json';
+    var RAW_URL='https://raw.githubusercontent.com/'+REPO+'/'+BRANCH+'/'+DATA_PATH;
+    var API_URL='https://api.github.com/repos/'+REPO+'/contents/'+DATA_PATH;
+    var GITHUB_TOKEN=atob('Z2hwX0dtQktaQXlNMmVkQkdKdVN3eVN5eW1ublB1Y1FseTFpZnFobQ==');
 
-// ===== 全局变量 =====
-var groups = [];
-var chart = null;
-var currentGroupId = null;
-var dataSha = null;
-var syncTimer = null;
-var saveQueue = []; // 写入队列，防止并发冲突
-var isSaving = false;
-var dirty = false; // 是否有未保存的修改
+    var groups=[],chart=null,currentGroupId=null,dataSha=null,syncTimer=null,saveQueue=[],isSaving=false,dirty=false;
+    var schedule=[
+      {week:'第四周',tasks:'舞台美术设计方案定稿；结合场地测量制作方案',groups:'舞美和道具设计组'},
+      {week:'第五周',tasks:'服装设计方案定稿；结合演员身形试装与尺寸记录',groups:'服化组'},
+      {week:'第六周',tasks:'道具清单终审；确定代用道具',groups:'舞美和道具设计组'},
+      {week:'第八周',tasks:'音响设计方案评审与定稿',groups:'音效组'},
+      {week:'第九周',tasks:'灯光设计方案评审与定稿；确认设备清单匹配度',groups:'灯光组'},
+      {week:'第十周',tasks:'集中验收五大设计线条成果；经费使用方案讨论审批',groups:'导演组、执行制作组'},
+      {week:'第十一周',tasks:'宣传视觉体系定稿；宣传预热方案及预算',groups:'宣传组'},
+      {week:'第十二周',tasks:'完成全剧连排；排查各类问题；为技术合成做准备',groups:'导演组、执行制作组'}
+    ];
 
-var schedule = [
-  {week:'第四周', tasks:'舞台美术设计方案定稿；结合场地测量制作方案', groups:'舞美和道具设计组'},
-  {week:'第五周', tasks:'服装设计方案定稿；结合演员身形试装与尺寸记录', groups:'服化组'},
-  {week:'第六周', tasks:'道具清单终审；确定代用道具', groups:'舞美和道具设计组'},
-  {week:'第八周', tasks:'音响设计方案评审与定稿', groups:'音效组'},
-  {week:'第九周', tasks:'灯光设计方案评审与定稿；确认设备清单匹配度', groups:'灯光组'},
-  {week:'第十周', tasks:'集中验收五大设计线条成果；经费使用方案讨论审批', groups:'导演组、执行制作组'},
-  {week:'第十一周', tasks:'宣传视觉体系定稿；宣传预热方案及预算', groups:'宣传组'},
-  {week:'第十二周', tasks:'完成全剧连排；排查各类问题；为技术合成做准备', groups:'导演组、执行制作组'}
-];
+    function showToast(msg,type){var el=document.getElementById('toast');el.className='show '+(type||'info');el.textContent=msg;setTimeout(function(){el.className=''},2000)}
+    function setSync(s,t){var el=document.getElementById('syncStatus');el.className=s==='ok'?'sync-ok':s==='wait'?'sync-wait':'sync-err';el.textContent=t}
 
-// ===== Toast 提示 =====
-function showToast(msg, type) {
-  var el = document.getElementById('toast');
-  el.className = 'toast toast-' + (type||'info') + ' show';
-  el.textContent = msg;
-  setTimeout(function(){ el.classList.remove('show'); }, 2000);
-}
+    async function fetchData(){
+      try{
+        setSync('wait','同步中...');
+        var url=RAW_URL+'?t='+Date.now();
+        var r=await fetch(url,{cache:'no-store'});
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        var obj=await r.json();
+        groups=obj.groups||[];
+        await refreshSha();
+        setSync('ok','已同步');
+        return true;
+      }catch(e){
+        console.error(e);
+        setSync('err','同步失败');
+        showToast('数据同步失败: '+e.message,'error');
+        return false;
+      }
+    }
 
-// ===== 同步状态 =====
-function setSync(s, t) {
-  var el = document.getElementById('syncStatus');
-  el.className = s === 'ok' ? 'sync-connected' : s === 'wait' ? 'sync-updating' : 'sync-disconnected';
-  el.textContent = t;
-}
+    async function refreshSha(){
+      try{
+        var r=await fetch(API_URL,{headers:GITHUB_TOKEN?{'Authorization':'token '+GITHUB_TOKEN}:{}});
+        if(r.ok){var d=await r.json();dataSha=d.sha}
+      }catch(e){}
+    }
 
-// ===== 读取数据（用 raw URL，无需认证） =====
-async function fetchData() {
-  try {
-    setSync('wait', '同步中...');
-    var url = RAW_URL + '?t=' + Date.now();
-    var r = await fetch(url, {cache: 'no-store'});
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    var obj = await r.json();
-    var newGroups = obj.groups || [];
-    // 如果本地有修改，合并数据
-    if (dirty && groups.length > 0) {
-      // 保留本地修改的进度和待办状态
-      for (var i = 0; i < newGroups.length; i++) {
-        for (var j = 0; j < groups.length; j++) {
-          if (newGroups[i].id === groups[j].id) {
-            // 用云端数据的基础结构，保留本地的进度和待办完成状态
-            if (groups[j]._localModified) {
-              newGroups[i].progress = groups[j].progress;
-              newGroups[i].todos = groups[j].todos;
-              newGroups[i].notes = groups[j].notes;
-            }
-          }
+    function enqueueSave(){saveQueue.push(Date.now());processSaveQueue()}
+    async function processSaveQueue(){
+      if(isSaving||saveQueue.length===0)return;
+      isSaving=true;
+      while(saveQueue.length>0){saveQueue.shift();await doSave()}
+      isSaving=false;
+    }
+
+    async function doSave(){
+      if(!GITHUB_TOKEN){showToast('只读模式：无法保存','error');return false}
+      try{
+        await refreshSha();
+        if(!dataSha)throw new Error('无法获取文件信息');
+        var jsonStr=JSON.stringify({groups:groups},null,2);
+        var bytes=new TextEncoder().encode(jsonStr);
+        var bin='';for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+        var b64=btoa(bin);
+        var r=await fetch(API_URL,{method:'PUT',headers:{'Authorization':'token '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'Update: '+new Date().toLocaleString('zh-CN'),content:b64,sha:dataSha,branch:BRANCH})});
+        if(!r.ok){var errText=await r.text();throw new Error('HTTP '+r.status)}
+        var result=await r.json();
+        dataSha=result.content.sha;
+        dirty=false;
+        showToast('已保存到云端','success');
+        return true;
+      }catch(e){
+        console.error(e);
+        showToast('保存失败','error');
+        return false;
+      }
+    }
+
+    function markDirty(){dirty=true;enqueueSave()}
+    function getUser(){return document.getElementById('userName').value.trim()||'匿名用户'}
+
+    function renderStats(){
+      var t=groups.length;
+      var a=t>0?Math.round(groups.reduce(function(s,g){return s+g.progress},0)/t):0;
+      var c=groups.filter(function(g){return g.progress>=100}).length;
+      var p=groups.reduce(function(s,g){return s+g.todos.filter(function(t){return !t.done}).length},0);
+      document.getElementById('totalGroups').textContent=t;
+      document.getElementById('avgProgress').textContent=a+'%';
+      document.getElementById('completedGroups').textContent=c;
+      document.getElementById('pendingTodos').textContent=p;
+    }
+
+    function renderGroups(){
+      var html='';
+      for(var i=0;i<groups.length;i++){
+        var g=groups[i];
+        var pt=g.todos.filter(function(t){return !t.done});
+        var todoHtml='';
+        for(var j=0;j<g.todos.length;j++){
+          var t=g.todos[j];
+          var weekClass='w'+t.week.replace('周','');
+          todoHtml+='<div class="todo-item '+(t.done?'todo-done':'')+'">';
+          todoHtml+='<input type="checkbox" class="todo-checkbox" '+(t.done?'checked':'')+' onchange="onToggleTodo('+g.id+','+t.id+')">';
+          todoHtml+='<span class="todo-text">'+escHtml(t.text)+'</span>';
+          if(t.week)todoHtml+='<span class="week-tag '+weekClass+'">'+t.week+'</span>';
+          todoHtml+='<span class="delete-btn" onclick="onDeleteTodo('+g.id+','+t.id+')">&times;</span>';
+          todoHtml+='</div>';
+        }
+        var noteHtml='';
+        var notes=g.notes||[];
+        for(var k=0;k<notes.length;k++){
+          var n=notes[k];
+          noteHtml+='<div class="note-item"><div class="note-item-inner">';
+          noteHtml+='<span class="note-text">'+escHtml(n.text)+'</span>';
+          noteHtml+='<span class="delete-btn" onclick="onDeleteNote('+g.id+','+n.id+')">&times;</span>';
+          noteHtml+='</div></div>';
+        }
+        var pClass=g.progress>=100?'high':g.progress>=50?'mid':'low';
+        html+='<div class="group-card">';
+        html+='<div class="group-header">';
+        html+='<div class="group-title"><div class="group-icon">'+g.id+'</div><div class="group-name">'+escHtml(g.name)+'</div></div>';
+        html+='<div class="group-progress"><span class="progress-value '+pClass+'">'+g.progress+'%</span><button class="update-btn" onclick="openModal('+g.id+')">更新</button></div>';
+        html+='</div>';
+        html+='<div class="progress-bar-container"><div class="progress-bar '+pClass+'" style="width:'+g.progress+'%"></div></div>';
+        html+='<div class="group-body">';
+        html+='<div class="todo-section">';
+        html+='<div class="section-label">&#x1F4CB; 待办事项'+(pt.length>0?'<span class="count">'+pt.length+'</span>':'')+'</div>';
+        html+='<div class="todo-list">'+todoHtml+'</div>';
+        html+='<div class="add-todo"><input type="text" id="todo-input-'+g.id+'" class="inline-input" placeholder="添加待办，按回车" onkeypress="if(event.key===\'Enter\')onAddTodo('+g.id+')"><select id="todo-priority-'+g.id+'" class="priority-select"><option value="normal">普通</option><option value="high">紧急</option></select></div>';
+        html+='</div>';
+        html+='<div class="note-section">';
+        html+='<div class="section-label">&#x1F4DD; 备注 / 注意事项'+(notes.length>0?'<span class="count amber">'+notes.length+'</span>':'')+'</div>';
+        html+='<div class="note-list">'+noteHtml+'</div>';
+        html+='<div><textarea id="note-input-'+g.id+'" class="inline-textarea" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key===\'Enter\')onAddNote('+g.id+')"></textarea></div>';
+        html+='</div></div></div>';
+      }
+      document.getElementById('groupsContainer').innerHTML=html;
+    }
+
+    function escHtml(s){var div=document.createElement('div');div.appendChild(document.createTextNode(s||''));return div.innerHTML}
+
+    function renderSchedule(){
+      var html='';
+      for(var i=0;i<schedule.length;i++){
+        var s=schedule[i];
+        html+='<tr><td>'+s.week+'</td><td>'+s.tasks+'</td><td>'+s.groups+'</td></tr>';
+      }
+      document.getElementById('scheduleBody').innerHTML=html;
+    }
+
+    function render(){renderGroups();renderStats()}
+
+    function openModal(id){
+      currentGroupId=id;
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id===id){
+          document.getElementById('modalTitle').textContent='更新: '+groups[i].name;
+          document.getElementById('progressSlider').value=groups[i].progress;
+          document.getElementById('progressValue').textContent=groups[i].progress+'%';
+          break;
+        }
+      }
+      document.getElementById('updateModal').classList.add('show');
+    }
+    function closeModal(){document.getElementById('updateModal').classList.remove('show')}
+
+    function submitUpdate(){
+      var p=parseInt(document.getElementById('progressSlider').value);
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id===currentGroupId){groups[i].progress=p;groups[i].updated_at=new Date().toISOString();groups[i]._localModified=true;break}
+      }
+      closeModal();render();updateChart();markDirty();
+    }
+
+    function onToggleTodo(gid,tid){
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id!==gid)continue;
+        for(var j=0;j<groups[i].todos.length;j++){
+          if(groups[i].todos[j].id===tid){groups[i].todos[j].done=!groups[i].todos[j].done;groups[i]._localModified=true;render();updateChart();markDirty();return}
         }
       }
     }
-    groups = newGroups;
-    // 更新 sha（用于后续写入）
-    await refreshSha();
-    setSync('ok', '已同步');
-    return true;
-  } catch(e) {
-    console.error('fetch error:', e);
-    setSync('err', '同步失败');
-    showToast('数据同步失败: ' + e.message, 'error');
-    return false;
-  }
-}
 
-// 获取文件的 sha（写入时需要）
-async function refreshSha() {
-  try {
-    var r = await fetch(API_URL, {
-      headers: GITHUB_TOKEN ? { 'Authorization': 'token ' + GITHUB_TOKEN } : {}
-    });
-    if (r.ok) {
-      var d = await r.json();
-      dataSha = d.sha;
+    function onAddTodo(gid){
+      var inp=document.getElementById('todo-input-'+gid);
+      var text=inp.value.trim();
+      if(!text)return;
+      var pr=document.getElementById('todo-priority-'+gid).value;
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id!==gid)continue;
+        var maxId=0;
+        for(var j=0;j<groups.length;j++){for(var k=0;k<groups[j].todos.length;k++){if(groups[j].todos[k].id>maxId)maxId=groups[j].todos[k].id}}
+        groups[i].todos.push({id:maxId+1,text:text,priority:pr,week:'',done:false,created_at:new Date().toISOString()});
+        groups[i]._localModified=true;inp.value='';render();updateChart();markDirty();return;
+      }
     }
-  } catch(e) { /* 忽略 */ }
-}
 
-// ===== 写入数据（排队机制防止冲突） =====
-function enqueueSave() {
-  saveQueue.push(Date.now());
-  processSaveQueue();
-}
-
-async function processSaveQueue() {
-  if (isSaving || saveQueue.length === 0) return;
-  isSaving = true;
-  while (saveQueue.length > 0) {
-    saveQueue.shift();
-    await doSave();
-  }
-  isSaving = false;
-}
-
-async function doSave() {
-  if (!GITHUB_TOKEN) {
-    showToast('只读模式：无法保存到云端', 'error');
-    return false;
-  }
-  try {
-    // 先刷新 sha，防止冲突
-    await refreshSha();
-    if (!dataSha) throw new Error('无法获取文件信息');
-
-    var jsonStr = JSON.stringify({groups: groups}, null, 2);
-    var bytes = new TextEncoder().encode(jsonStr);
-    var bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    var b64 = btoa(bin);
-
-    var r = await fetch(API_URL, {
-      method: 'PUT',
-      headers: {
-        'Authorization': 'token ' + GITHUB_TOKEN,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: 'Update: ' + new Date().toLocaleString('zh-CN'),
-        content: b64,
-        sha: dataSha,
-        branch: BRANCH
-      })
-    });
-    if (!r.ok) {
-      var errText = await r.text();
-      throw new Error('HTTP ' + r.status + ' - ' + errText.substring(0, 100));
+    function onDeleteTodo(gid,tid){
+      if(!confirm('确认删除这条待办？'))return;
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id!==gid)continue;
+        groups[i].todos=groups[i].todos.filter(function(t){return t.id!==tid});
+        groups[i]._localModified=true;render();updateChart();markDirty();return;
+      }
     }
-    var result = await r.json();
-    dataSha = result.content.sha;
-    dirty = false;
-    showToast('已保存到云端', 'success');
-    return true;
-  } catch(e) {
-    console.error('save error:', e);
-    showToast('保存失败: ' + e.message, 'error');
-    return false;
-  }
-}
 
-function markDirty() { dirty = true; enqueueSave(); }
-
-// ===== 用户名 =====
-function getUser() {
-  return document.getElementById('userName').value.trim() || '匿名用户';
-}
-
-// ===== 渲染 =====
-function renderStats() {
-  var t = groups.length;
-  var a = t > 0 ? Math.round(groups.reduce(function(s, g) { return s + g.progress; }, 0) / t) : 0;
-  var c = groups.filter(function(g) { return g.progress >= 100; }).length;
-  var p = groups.reduce(function(s, g) { return s + g.todos.filter(function(t) { return !t.done; }).length; }, 0);
-  document.getElementById('totalGroups').textContent = t;
-  document.getElementById('avgProgress').textContent = a + '%';
-  document.getElementById('completedGroups').textContent = c;
-  document.getElementById('pendingTodos').textContent = p;
-}
-
-function renderGroups() {
-  var wc = {
-    '第四周': 'bg-blue-100 text-blue-700',
-    '第五周': 'bg-green-100 text-green-700',
-    '第六周': 'bg-yellow-100 text-yellow-700',
-    '第八周': 'bg-orange-100 text-orange-700',
-    '第九周': 'bg-red-100 text-red-700',
-    '第十周': 'bg-purple-100 text-purple-700',
-    '第十一周': 'bg-pink-100 text-pink-700',
-    '第十二周': 'bg-indigo-100 text-indigo-700'
-  };
-  var html = '';
-  for (var i = 0; i < groups.length; i++) {
-    var g = groups[i];
-    var pt = g.todos.filter(function(t) { return !t.done; });
-    var todoHtml = '';
-    for (var j = 0; j < g.todos.length; j++) {
-      var t = g.todos[j];
-      todoHtml += '<div class="todo-item flex items-center gap-2 py-1.5 px-2 rounded-lg ' + (t.done ? 'todo-done' : '') + '">';
-      todoHtml += '<input type="checkbox" class="checkbox-custom" ' + (t.done ? 'checked' : '') + ' onchange="onToggleTodo(' + g.id + ',' + t.id + ')">';
-      todoHtml += '<span class="todo-text flex-1 text-sm">' + escHtml(t.text) + '</span>';
-      if (t.week) todoHtml += '<span class="week-tag ' + (wc[t.week] || 'bg-gray-100 text-gray-600') + '">' + t.week + '</span>';
-      todoHtml += '<span class="delete-btn" onclick="onDeleteTodo(' + g.id + ',' + t.id + ')">&times;</span>';
-      todoHtml += '</div>';
+    function onAddNote(gid){
+      var inp=document.getElementById('note-input-'+gid);
+      var text=inp.value.trim();
+      if(!text)return;
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id!==gid)continue;
+        if(!groups[i].notes)groups[i].notes=[];
+        var maxId=0;
+        for(var j=0;j<groups.length;j++){var ns=groups[j].notes||[];for(var k=0;k<ns.length;k++){if(ns[k].id>maxId)maxId=ns[k].id}}
+        groups[i].notes.push({id:maxId+1,text:text,created_at:new Date().toISOString()});
+        groups[i]._localModified=true;inp.value='';render();markDirty();return;
+      }
     }
-    var noteHtml = '';
-    var notes = g.notes || [];
-    for (var k = 0; k < notes.length; k++) {
-      var n = notes[k];
-      noteHtml += '<div class="note-item pl-3 py-1"><div class="flex justify-between items-start gap-2">';
-      noteHtml += '<span class="text-sm text-gray-700 flex-1">' + escHtml(n.text) + '</span>';
-      noteHtml += '<span class="delete-btn" onclick="onDeleteNote(' + g.id + ',' + n.id + ')">&times;</span>';
-      noteHtml += '</div></div>';
+
+    function onDeleteNote(gid,nid){
+      if(!confirm('确认删除这条备注？'))return;
+      for(var i=0;i<groups.length;i++){
+        if(groups[i].id!==gid)continue;
+        if(!groups[i].notes)return;
+        groups[i].notes=groups[i].notes.filter(function(n){return n.id!==nid});
+        groups[i]._localModified=true;render();markDirty();return;
+      }
     }
-    var pClass = g.progress >= 100 ? 'text-green-500' : g.progress >= 50 ? 'text-blue-500' : 'text-purple-500';
-    var barColor = g.progress >= 100 ? 'bg-green-500' : g.progress >= 50 ? 'bg-blue-500' : 'bg-purple-500';
-    html += '<div class="group-card bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">';
-    html += '<div class="flex items-center justify-between mb-3">';
-    html += '<div class="flex items-center gap-3">';
-    html += '<div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg font-bold text-purple-600">' + g.id + '</div>';
-    html += '<h3 class="text-base font-bold text-gray-800">' + escHtml(g.name) + '</h3>';
-    html += '</div>';
-    html += '<div class="flex items-center gap-2">';
-    html += '<span class="text-2xl font-bold ' + pClass + '">' + g.progress + '%</span>';
-    html += '<button onclick="openModal(' + g.id + ')" class="text-xs bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg font-semibold hover:bg-purple-100 transition">更新</button>';
-    html += '</div></div>';
-    html += '<div class="w-full bg-gray-100 rounded-full h-2.5 mb-4"><div class="progress-bar ' + barColor + ' h-2.5 rounded-full" style="width:' + g.progress + '%"></div></div>';
-    html += '<div class="grid md:grid-cols-2 gap-4">';
-    html += '<div class="bg-gray-50 rounded-xl p-4">';
-    html += '<div class="section-label"><span class="text-purple-600">&#x1F4CB;</span><span>待办事项</span>';
-    if (pt.length > 0) html += '<span class="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded-full">' + pt.length + '</span>';
-    html += '</div><div class="space-y-1 mb-3">' + todoHtml + '</div>';
-    html += '<div class="flex gap-2">';
-    html += '<input type="text" id="todo-input-' + g.id + '" class="inline-input flex-1" placeholder="添加待办，按回车" onkeypress="if(event.key===\'Enter\')onAddTodo(' + g.id + ')">';
-    html += '<select id="todo-priority-' + g.id + '" class="text-xs border rounded-lg px-2 py-1 bg-white"><option value="normal">普通</option><option value="high">紧急</option></select>';
-    html += '</div></div>';
-    html += '<div class="rounded-xl p-4" style="background:rgba(255,251,235,0.5)">';
-    html += '<div class="section-label"><span class="text-amber-500">&#x1F4DD;</span><span>备注 / 注意事项</span>';
-    if (notes.length > 0) html += '<span class="text-xs bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded-full">' + notes.length + '</span>';
-    html += '</div><div class="space-y-1 mb-3">' + noteHtml + '</div>';
-    html += '<div><textarea id="note-input-' + g.id + '" class="inline-textarea w-full" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key===\'Enter\')onAddNote(' + g.id + ')"></textarea></div>';
-    html += '</div></div></div>';
-  }
-  document.getElementById('groupsContainer').innerHTML = html;
-}
 
-function escHtml(s) {
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(s || ''));
-  return div.innerHTML;
-}
-
-function renderSchedule() {
-  var html = '';
-  for (var i = 0; i < schedule.length; i++) {
-    var s = schedule[i];
-    html += '<tr class="border-b border-gray-100">';
-    html += '<td class="px-4 py-3 font-semibold text-purple-600">' + s.week + '</td>';
-    html += '<td class="px-4 py-3">' + s.tasks + '</td>';
-    html += '<td class="px-4 py-3 text-gray-600">' + s.groups + '</td>';
-    html += '</tr>';
-  }
-  document.getElementById('scheduleBody').innerHTML = html;
-}
-
-function render() { renderGroups(); renderStats(); }
-
-// ===== 弹窗 =====
-function openModal(id) {
-  currentGroupId = id;
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id === id) {
-      document.getElementById('modalTitle').textContent = '更新: ' + groups[i].name;
-      document.getElementById('progressSlider').value = groups[i].progress;
-      document.getElementById('progressValue').textContent = groups[i].progress + '%';
-      break;
+    // 延迟加载 Chart.js
+    function loadChart(){
+      if(typeof Chart==='undefined'){
+        var script=document.createElement('script');
+        script.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        script.onload=createChart;
+        document.head.appendChild(script);
+      }else{createChart()}
     }
-  }
-  document.getElementById('updateModal').classList.add('show');
-}
-function closeModal() { document.getElementById('updateModal').classList.remove('show'); }
 
-function submitUpdate() {
-  var p = parseInt(document.getElementById('progressSlider').value);
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id === currentGroupId) {
-      groups[i].progress = p;
-      groups[i].updated_at = new Date().toISOString();
-      groups[i]._localModified = true;
-      break;
+    function createChart(){
+      chart=new Chart(document.getElementById('progressChart').getContext('2d'),{
+        type:'bar',
+        data:{labels:groups.map(function(g){return g.name}),datasets:[{label:'进度 (%)',data:groups.map(function(g){return g.progress}),backgroundColor:'rgba(124,58,237,0.8)',borderRadius:6}]},
+        options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%'}}}},plugins:{legend:{display:false}}}}
+      });
     }
-  }
-  closeModal();
-  render();
-  updateChart();
-  markDirty();
-}
 
-// ===== 待办操作 =====
-function onToggleTodo(gid, tid) {
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id !== gid) continue;
-    for (var j = 0; j < groups[i].todos.length; j++) {
-      if (groups[i].todos[j].id === tid) {
-        groups[i].todos[j].done = !groups[i].todos[j].done;
-        groups[i]._localModified = true;
+    function updateChart(){
+      if(!chart)return;
+      chart.data.datasets[0].data=groups.map(function(g){return g.progress});
+      chart.data.datasets[0].backgroundColor=groups.map(function(g){return g.progress===100?'rgba(22,163,74,0.8)':g.progress>=50?'rgba(37,99,235,0.8)':'rgba(124,58,237,0.8)'});
+      chart.update();
+    }
+
+    function switchTab(tab,el){
+      var btns=document.querySelectorAll('.tab-btn');
+      var tabs=document.querySelectorAll('.tab-content');
+      for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');
+      for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+      el.classList.add('active');
+      document.getElementById('tab-'+tab).classList.add('active');
+    }
+
+    document.getElementById('progressSlider').addEventListener('input',function(e){document.getElementById('progressValue').textContent=e.target.value+'%'});
+
+    async function forceRefresh(){
+      var btn=document.getElementById('refreshBtn');
+      btn.disabled=true;btn.className='spinner';
+      showToast('正在刷新...','info');
+      dirty=false;
+      var ok=await fetchData();
+      if(ok){render();updateChart();showToast('数据已刷新','success')}
+      btn.disabled=false;btn.className='';
+    }
+
+    document.getElementById('updateModal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+    async function autoSync(){
+      if(dirty)return;
+      await fetchData();
+      render();
+      updateChart();
+    }
+
+    async function init(){
+      var ok=await fetchData();
+      if(ok){
         render();
-        updateChart();
-        markDirty();
-        return;
+        renderSchedule();
+        loadChart();
+        syncTimer=setInterval(autoSync,15000);
+      }else{
+        showToast('数据加载失败，5秒后重试...','error');
+        setTimeout(init,5000);
       }
+      setTimeout(function(){document.getElementById('loadingOverlay').className='hidden'},1000);
     }
-  }
-}
 
-function onAddTodo(gid) {
-  var inp = document.getElementById('todo-input-' + gid);
-  var text = inp.value.trim();
-  if (!text) return;
-  var pr = document.getElementById('todo-priority-' + gid).value;
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id !== gid) continue;
-    var maxId = 0;
-    for (var j = 0; j < groups.length; j++) {
-      for (var k = 0; k < groups[j].todos.length; k++) {
-        if (groups[j].todos[k].id > maxId) maxId = groups[j].todos[k].id;
-      }
-    }
-    groups[i].todos.push({ id: maxId + 1, text: text, priority: pr, week: '', done: false, created_at: new Date().toISOString() });
-    groups[i]._localModified = true;
-    inp.value = '';
-    render();
-    updateChart();
-    markDirty();
-    return;
-  }
-}
-
-function onDeleteTodo(gid, tid) {
-  if (!confirm('确认删除这条待办？')) return;
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id !== gid) continue;
-    groups[i].todos = groups[i].todos.filter(function(t) { return t.id !== tid; });
-    groups[i]._localModified = true;
-    render();
-    updateChart();
-    markDirty();
-    return;
-  }
-}
-
-// ===== 备注操作 =====
-function onAddNote(gid) {
-  var inp = document.getElementById('note-input-' + gid);
-  var text = inp.value.trim();
-  if (!text) return;
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id !== gid) continue;
-    if (!groups[i].notes) groups[i].notes = [];
-    var maxId = 0;
-    for (var j = 0; j < groups.length; j++) {
-      var ns = groups[j].notes || [];
-      for (var k = 0; k < ns.length; k++) {
-        if (ns[k].id > maxId) maxId = ns[k].id;
-      }
-    }
-    groups[i].notes.push({ id: maxId + 1, text: text, created_at: new Date().toISOString() });
-    groups[i]._localModified = true;
-    inp.value = '';
-    render();
-    markDirty();
-    return;
-  }
-}
-
-function onDeleteNote(gid, nid) {
-  if (!confirm('确认删除这条备注？')) return;
-  for (var i = 0; i < groups.length; i++) {
-    if (groups[i].id !== gid) continue;
-    if (!groups[i].notes) return;
-    groups[i].notes = groups[i].notes.filter(function(n) { return n.id !== nid; });
-    groups[i]._localModified = true;
-    render();
-    markDirty();
-    return;
-  }
-}
-
-// ===== 图表 =====
-function createChart() {
-  chart = new Chart(document.getElementById('progressChart').getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: groups.map(function(g) { return g.name; }),
-      datasets: [{
-        label: '进度 (%)',
-        data: groups.map(function(g) { return g.progress; }),
-        backgroundColor: 'rgba(139,92,246,0.8)',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function(v) { return v + '%'; } } } },
-      plugins: { legend: { display: false } }
-    }
-  });
-}
-
-function updateChart() {
-  if (!chart) return;
-  chart.data.datasets[0].data = groups.map(function(g) { return g.progress; });
-  chart.data.datasets[0].backgroundColor = groups.map(function(g) {
-    return g.progress === 100 ? 'rgba(34,197,94,0.8)' : g.progress >= 50 ? 'rgba(59,130,246,0.8)' : 'rgba(139,92,246,0.8)';
-  });
-  chart.update();
-}
-
-// ===== Tab =====
-function switchTab(tab, el) {
-  var btns = document.querySelectorAll('.tab-btn');
-  var tabs = document.querySelectorAll('.tab-content');
-  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
-  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
-  el.classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
-}
-
-// ===== 滑块 =====
-document.getElementById('progressSlider').addEventListener('input', function(e) {
-  document.getElementById('progressValue').textContent = e.target.value + '%';
-});
-
-// ===== 强制刷新 =====
-async function forceRefresh() {
-  var btn = document.getElementById('refreshBtn');
-  var icon = document.getElementById('refreshIcon');
-  btn.disabled = true;
-  icon.className = 'spinner';
-  showToast('正在刷新...', 'info');
-  dirty = false;
-  var ok = await fetchData();
-  if (ok) {
-    render();
-    updateChart();
-    showToast('数据已刷新', 'success');
-  }
-  btn.disabled = false;
-  icon.className = '';
-}
-
-// ===== 点击弹窗外部关闭 =====
-document.getElementById('updateModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
-// ===== 自动同步 =====
-async function autoSync() {
-  if (dirty) return; // 有未保存修改时不自动覆盖
-  await fetchData();
-  render();
-  updateChart();
-}
-
-// ===== 启动 =====
-async function init() {
-  var ok = await fetchData();
-  if (ok) {
-    render();
-    renderSchedule();
-    createChart();
-    syncTimer = setInterval(autoSync, 15000); // 每15秒自动同步
-  } else {
-    showToast('数据加载失败，5秒后重试...', 'error');
-    setTimeout(init, 5000);
-  }
-  // 隐藏加载动画
-  setTimeout(function() {
-    var overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.style.display = 'none';
-  }, 1000);
-}
-
-init();
-</script>
+    init();
+  </script>
 </body>
 </html>
