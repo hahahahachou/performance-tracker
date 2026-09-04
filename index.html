@@ -139,7 +139,7 @@
         if (!res.ok) throw new Error('GitHub API error: ' + res.status);
         const data = await res.json();
         dataSha = data.sha;
-        const content = JSON.parse(atob(data.content));
+        const content = JSON.parse(decodeURIComponent(escape(atob(data.content))));
         groups = content.groups || [];
         setSyncStatus('connected', '✅ 已同步');
         return true;
