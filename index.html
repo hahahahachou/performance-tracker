@@ -1,392 +1,294 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>演出项目进度追踪</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#f5f3ff,#eff6ff);min-height:100vh;color:#1f2937}
-    .container{max-width:1280px;margin:0 auto;padding:2rem 1rem}
-    h1{font-size:2rem;font-weight:700;text-align:center;color:#1f2937;margin-bottom:.5rem}
-    .subtitle{text-align:center;color:#6b7280;margin-bottom:1.5rem}
-    .header-card{background:#fff;border-radius:.5rem;padding:.75rem 1rem;display:flex;align-items:center;gap:.5rem;justify-content:center;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-    .header-card span{font-size:.875rem;color:#6b7280}
-    .header-card input{border:0;outline:0;font-size:.875rem;font-weight:600;color:#7c3aed;background:transparent;width:6rem}
-    .tabs{display:flex;gap:.25rem;margin-bottom:0}
-    .tab-btn{cursor:pointer;padding:.625rem 1.25rem;border-radius:.5rem .5rem 0 0;font-weight:600;transition:all .2s;background:#e5e7eb;color:#6b7280}
-    .tab-btn.active{background:#fff;color:#7c3aed;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
-    .tab-content{display:none;background:#fff;border-radius:0 .75rem .75rem .75rem;box-shadow:0 4px 6px rgba(0,0,0,.05);padding:1rem 1.5rem}
-    .tab-content.active{display:block}
-    .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem}
-    @media(min-width:768px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
-    .stat-card{border-radius:.75rem;padding:1rem;text-align:center}
-    .stat-card.purple{background:#f5f3ff}
-    .stat-card.blue{background:#eff6ff}
-    .stat-card.green{background:#f0fdf4}
-    .stat-card.orange{background:#fff7ed}
-    .stat-value{font-size:1.5rem;font-weight:700}
-    .stat-value.purple{color:#7c3aed}
-    .stat-value.blue{color:#2563eb}
-    .stat-value.green{color:#16a34a}
-    .stat-value.orange{color:#ea580c}
-    .stat-label{font-size:.75rem;color:#6b7280;margin-top:.25rem}
-    .chart-container{background:#f9fafb;border-radius:.75rem;padding:1rem 1.5rem;margin-bottom:1.5rem}
-    .chart-container h2{font-size:1.125rem;font-weight:600;margin-bottom:1rem}
-    .chart-wrapper{position:relative;height:300px}
-    .group-card{background:#fff;border:1px solid #f3f4f6;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1rem;transition:box-shadow .2s}
-    .group-card:hover{box-shadow:0 10px 25px rgba(0,0,0,.08)}
-    .group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
-    .group-title{display:flex;align-items:center;gap:.75rem}
-    .group-icon{width:2.5rem;height:2.5rem;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:1.125rem;font-weight:700;color:#7c3aed}
-    .group-name{font-size:1rem;font-weight:700;color:#1f2937}
-    .group-progress{display:flex;align-items:center;gap:.5rem}
-    .progress-value{font-size:1.5rem;font-weight:700}
-    .progress-value.high{color:#16a34a}
-    .progress-value.mid{color:#2563eb}
-    .progress-value.low{color:#7c3aed}
-    .update-btn{font-size:.75rem;background:#f3e8ff;color:#7c3aed;padding:.375rem .75rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0;transition:background .2s}
-    .update-btn:hover{background:#e9d5ff}
-    .progress-bar-container{width:100%;height:.625rem;background:#f3f4f6;border-radius:9999px;margin-bottom:1rem}
-    .progress-bar{height:100%;border-radius:9999px;transition:width .5s}
-    .progress-bar.high{background:#16a34a}
-    .progress-bar.mid{background:#2563eb}
-    .progress-bar.low{background:#7c3aed}
-    .group-body{display:grid;gap:1rem}
-    @media(min-width:768px){.group-body{grid-template-columns:1fr 1fr}}
-    .todo-section{background:#f9fafb;border-radius:.75rem;padding:1rem}
-    .note-section{background:#fffbeb;border-radius:.75rem;padding:1rem}
-    .section-label{font-size:.8125rem;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:.375rem;margin-bottom:.5rem}
-    .section-label .count{font-size:.6875rem;background:#e9d5ff;color:#7c3aed;padding:.125rem .375rem;border-radius:9999px}
-    .section-label .count.amber{background:#fef3c7;color:#d97706}
-    .todo-list{margin-bottom:.75rem}
-    .todo-item{display:flex;align-items:center;gap:.5rem;padding:.375rem .5rem;border-radius:.5rem;transition:background .2s}
-    .todo-item:hover{background:#f3f4f6}
-    .todo-done span{color:#9ca3af;text-decoration:line-through}
-    .todo-checkbox{width:1.125rem;height:1.125rem;accent-color:#7c3aed;cursor:pointer;flex-shrink:0}
-    .todo-text{flex:1;font-size:.875rem}
-    .week-tag{font-size:.6875rem;padding:.125rem .5rem;border-radius:.25rem;font-weight:600;white-space:nowrap;flex-shrink:0}
-    .week-tag.w4{background:#dbeafe;color:#1d4ed8}
-    .week-tag.w5{background:#dcfce7;color:#15803d}
-    .week-tag.w6{background:#fef9c3;color:#a16207}
-    .week-tag.w8{background:#ffedd5;color:#c2410c}
-    .week-tag.w9{background:#fee2e2;color:#b91c1c}
-    .week-tag.w10{background:#f3e8ff;color:#7c3aed}
-    .week-tag.w11{background:#fce7f3;color:#be185d}
-    .week-tag.w12{background:#e0e7ff;color:#4338ca}
-    .delete-btn{color:#d1d5db;cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0}
-    .delete-btn:hover{color:#ef4444}
-    .add-todo{display:flex;gap:.5rem}
-    .inline-input{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #d1d5db;border-radius:.5rem;outline:0;flex:1;transition:border-color .2s}
-    .inline-input:focus{border-color:#7c3aed;border-style:solid}
-    .priority-select{font-size:.75rem;border:1px solid #d1d5db;border-radius:.5rem;padding:.25rem .5rem;background:#fff}
-    .note-list{margin-bottom:.75rem}
-    .note-item{border-left:3px solid #f59e0b;padding-left:.75rem;padding:.25rem 0}
-    .note-item-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
-    .note-text{font-size:.875rem;color:#374151;flex:1}
-    .inline-textarea{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #fbbf24;border-radius:.5rem;outline:0;width:100%;resize:none;transition:border-color .2s;font-family:inherit}
-    .inline-textarea:focus{border-color:#f59e0b;border-style:solid}
-    table{width:100%;border-collapse:collapse;font-size:.875rem}
-    th{background:#f9fafb;text-align:left;padding:.75rem 1rem;font-weight:600;color:#374151;text-transform:uppercase;font-size:.75rem;border-bottom:1px solid #e5e7eb}
-    td{padding:.75rem 1rem;border-bottom:1px solid #f3f4f6}
-    td:first-child{font-weight:600;color:#7c3aed}
-    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:1rem}
-    .modal-overlay.show{display:flex}
-    .modal-box{background:#fff;border-radius:1rem;padding:1.5rem;width:100%;max-width:20rem}
-    .modal-title{font-size:1.125rem;font-weight:700;margin-bottom:1rem}
-    .modal-slider{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
-    .slider-input{flex:1;accent-color:#7c3aed}
-    .slider-value{font-size:1.5rem;font-weight:700;color:#7c3aed;width:4rem;text-align:right}
-    .modal-actions{display:flex;gap:.5rem}
-    .btn{flex:1;padding:.5rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0;transition:all .2s}
-    .btn-cancel{background:#f3f4f6;color:#6b7280}
-    .btn-cancel:hover{background:#e5e7eb}
-    .btn-confirm{background:#7c3aed;color:#fff}
-    .btn-confirm:hover{background:#6d28d9}
-    #syncStatus{position:fixed;top:.625rem;right:.625rem;z-index:100;font-size:.75rem;padding:.25rem .75rem;border-radius:9999px;font-weight:600;transition:all .3s}
-    .sync-ok{background:#d1fae5;color:#065f46}
-    .sync-wait{background:#fef3c7;color:#92400e}
-    .sync-err{background:#fee2e2;color:#991b1b}
-    #toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);padding:.625rem 1.5rem;border-radius:.75rem;font-size:.875rem;font-weight:600;z-index:200;transition:all .3s;opacity:0;pointer-events:none;white-space:nowrap}
-    #toast.show{opacity:1;pointer-events:auto}
-    #toast.success{background:#d1fae5;color:#065f46}
-    #toast.error{background:#fee2e2;color:#991b1b}
-    #toast.info{background:#dbeafe;color:#1e40af}
-    .spinner{animation:spin 1s linear infinite}
-    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    .hidden{display:none!important}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>演出项目进度追踪</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#f5f3ff,#eff6ff);min-height:100vh;color:#1f2937}
+.container{max-width:1280px;margin:0 auto;padding:2rem 1rem}
+h1{font-size:2rem;font-weight:700;text-align:center;color:#1f2937;margin-bottom:.5rem}
+.subtitle{text-align:center;color:#6b7280;margin-bottom:1.5rem;font-size:.9rem}
+.header-card{background:#fff;border-radius:.5rem;padding:.75rem 1rem;display:flex;align-items:center;gap:.5rem;justify-content:center;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.header-card span{font-size:.875rem;color:#6b7280}
+.header-card input{border:0;outline:0;font-size:.875rem;font-weight:600;color:#7c3aed;background:transparent;width:6rem}
+.tabs{display:flex;gap:.25rem;margin-bottom:0}
+.tab-btn{cursor:pointer;padding:.625rem 1.25rem;border-radius:.5rem .5rem 0 0;font-weight:600;transition:all .2s;background:#e5e7eb;color:#6b7280;font-size:.9rem}
+.tab-btn.active{background:#fff;color:#7c3aed;box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+.tab-content{display:none;background:#fff;border-radius:0 .75rem .75rem .75rem;box-shadow:0 4px 6px rgba(0,0,0,.05);padding:1rem 1.5rem}
+.tab-content.active{display:block}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem}
+@media(min-width:768px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
+.stat-card{border-radius:.75rem;padding:1rem;text-align:center}
+.stat-card.purple{background:#f5f3ff}.stat-card.blue{background:#eff6ff}
+.stat-card.green{background:#f0fdf4}.stat-card.orange{background:#fff7ed}
+.stat-value{font-size:1.5rem;font-weight:700}
+.stat-value.purple{color:#7c3aed}.stat-value.blue{color:#2563eb}
+.stat-value.green{color:#16a34a}.stat-value.orange{color:#ea580c}
+.stat-label{font-size:.75rem;color:#6b7280;margin-top:.25rem}
+.chart-container{background:#f9fafb;border-radius:.75rem;padding:1rem 1.5rem;margin-bottom:1.5rem}
+.chart-container h2{font-size:1.125rem;font-weight:600;margin-bottom:1rem}
+.chart-wrapper{position:relative;height:280px}
+.group-card{background:#fff;border:1px solid #f3f4f6;border-radius:1rem;padding:1rem 1.25rem;margin-bottom:1rem}
+.group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem}
+.group-title{display:flex;align-items:center;gap:.75rem}
+.group-icon{width:2.5rem;height:2.5rem;border-radius:50%;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:1.125rem;font-weight:700;color:#7c3aed;flex-shrink:0}
+.group-name{font-size:1rem;font-weight:700;color:#1f2937}
+.group-progress{display:flex;align-items:center;gap:.5rem}
+.progress-value{font-size:1.5rem;font-weight:700}
+.progress-value.high{color:#16a34a}.progress-value.mid{color:#2563eb}.progress-value.low{color:#7c3aed}
+.update-btn{font-size:.75rem;background:#f3e8ff;color:#7c3aed;padding:.375rem .75rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0}
+.progress-bar-container{width:100%;height:.625rem;background:#f3f4f6;border-radius:9999px;margin-bottom:1rem}
+.progress-bar{height:100%;border-radius:9999px;transition:width .5s}
+.progress-bar.high{background:#16a34a}.progress-bar.mid{background:#2563eb}.progress-bar.low{background:#7c3aed}
+.group-body{display:grid;gap:1rem}
+@media(min-width:768px){.group-body{grid-template-columns:1fr 1fr}}
+.todo-section{background:#f9fafb;border-radius:.75rem;padding:1rem}
+.note-section{background:#fffbeb;border-radius:.75rem;padding:1rem}
+.section-label{font-size:.8125rem;font-weight:600;color:#6b7280;display:flex;align-items:center;gap:.375rem;margin-bottom:.5rem;flex-wrap:wrap}
+.section-label .count{font-size:.6875rem;background:#e9d5ff;color:#7c3aed;padding:.125rem .375rem;border-radius:9999px}
+.section-label .count.amber{background:#fef3c7;color:#d97706}
+.todo-list{margin-bottom:.75rem}
+.todo-item{display:flex;align-items:center;gap:.5rem;padding:.375rem .5rem;border-radius:.5rem}
+.todo-item:hover{background:#f3f4f6}
+.todo-done span{color:#9ca3af;text-decoration:line-through}
+.todo-checkbox{width:1.125rem;height:1.125rem;accent-color:#7c3aed;cursor:pointer;flex-shrink:0}
+.todo-text{flex:1;font-size:.875rem;word-break:break-word}
+.week-tag{font-size:.6875rem;padding:.125rem .5rem;border-radius:.25rem;font-weight:600;white-space:nowrap;flex-shrink:0}
+.week-tag.w4{background:#dbeafe;color:#1d4ed8}.week-tag.w5{background:#dcfce7;color:#15803d}
+.week-tag.w6{background:#fef9c3;color:#a16207}.week-tag.w8{background:#ffedd5;color:#c2410c}
+.week-tag.w9{background:#fee2e2;color:#b91c1c}.week-tag.w10{background:#f3e8ff;color:#7c3aed}
+.week-tag.w11{background:#fce7f3;color:#be185d}.week-tag.w12{background:#e0e7ff;color:#4338ca}
+.delete-btn{color:#d1d5db;cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0;padding:0 .25rem}
+.delete-btn:hover{color:#ef4444}
+.add-todo{display:flex;gap:.5rem}
+.inline-input{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #d1d5db;border-radius:.5rem;outline:0;flex:1}
+.inline-input:focus{border-color:#7c3aed;border-style:solid}
+.priority-select{font-size:.75rem;border:1px solid #d1d5db;border-radius:.5rem;padding:.25rem .5rem;background:#fff}
+.note-list{margin-bottom:.75rem}
+.note-item{border-left:3px solid #f59e0b;padding-left:.75rem;padding:.25rem 0}
+.note-item-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.note-text{font-size:.875rem;color:#374151;flex:1;word-break:break-word}
+.inline-textarea{font-size:.8125rem;padding:.375rem .625rem;border:1.5px dashed #fbbf24;border-radius:.5rem;outline:0;width:100%;resize:none;font-family:inherit}
+.inline-textarea:focus{border-color:#f59e0b;border-style:solid}
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{background:#f9fafb;text-align:left;padding:.75rem 1rem;font-weight:600;color:#374151;font-size:.75rem;border-bottom:1px solid #e5e7eb}
+td{padding:.75rem 1rem;border-bottom:1px solid #f3f4f6}
+td:first-child{font-weight:600;color:#7c3aed}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:50;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:1rem;padding:1.5rem;width:100%;max-width:20rem}
+.modal-title{font-size:1.125rem;font-weight:700;margin-bottom:1rem}
+.modal-slider{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.slider-input{flex:1;accent-color:#7c3aed}
+.slider-value{font-size:1.5rem;font-weight:700;color:#7c3aed;width:4rem;text-align:right}
+.modal-actions{display:flex;gap:.5rem}
+.btn{flex:1;padding:.5rem;border-radius:.5rem;font-weight:600;cursor:pointer;border:0;font-size:.9rem}
+.btn-cancel{background:#f3f4f6;color:#6b7280}
+.btn-confirm{background:#7c3aed;color:#fff}
+.save-hint{text-align:center;margin-top:1rem;padding:.75rem;background:#f0fdf4;border-radius:.5rem;font-size:.8rem;color:#16a34a}
+</style>
 </head>
 <body>
-  <div id="syncStatus" class="sync-err">连接中...</div>
-  <div id="toast"></div>
-  <div class="container">
-    <h1>演出项目进度追踪</h1>
-    <p class="subtitle">《演出制作实务（3）》· 云端同步版</p>
-    <div class="header-card">
-      <span>你的名字：</span>
-      <input type="text" id="userName" placeholder="点击输入">
-    </div>
-    <div class="tabs">
-      <div class="tab-btn active" onclick="switchTab('progress',this)">各组进度</div>
-      <div class="tab-btn" onclick="switchTab('schedule',this)">课程计划</div>
-    </div>
-    <div id="tab-progress" class="tab-content active">
-      <div class="stats-grid">
-        <div class="stat-card purple"><div class="stat-value purple" id="totalGroups">0</div><div class="stat-label">工作组总数</div></div>
-        <div class="stat-card blue"><div class="stat-value blue" id="avgProgress">0%</div><div class="stat-label">平均进度</div></div>
-        <div class="stat-card green"><div class="stat-value green" id="completedGroups">0</div><div class="stat-label">已完成组数</div></div>
-        <div class="stat-card orange"><div class="stat-value orange" id="pendingTodos">0</div><div class="stat-label">待办事项</div></div>
-      </div>
-      <div class="chart-container">
-        <h2>进度总览</h2>
-        <div class="chart-wrapper"><canvas id="progressChart"></canvas></div>
-      </div>
-      <div id="groupsContainer"></div>
-    </div>
-    <div id="tab-schedule" class="tab-content">
-      <table>
-        <thead><tr><th>周次</th><th>主要工作</th><th>负责组别</th></tr></thead>
-        <tbody id="scheduleBody"></tbody>
-      </table>
-    </div>
-  </div>
-  <div id="updateModal" class="modal-overlay">
-    <div class="modal-box">
-      <div class="modal-title" id="modalTitle">更新进度</div>
-      <div class="modal-slider">
-        <input type="range" id="progressSlider" min="0" max="100" step="5" value="0" class="slider-input">
-        <span class="slider-value" id="progressValue">0%</span>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-cancel" onclick="closeModal()">取消</button>
-        <button class="btn btn-confirm" onclick="submitUpdate()">确认</button>
-      </div>
-    </div>
-  </div>
+<div class="container">
+<h1>演出项目进度追踪</h1>
+<p class="subtitle">《演出制作实务（3）》· 本地版</p>
+<div class="header-card"><span>你的名字：</span><input type="text" id="userName" placeholder="点击输入"></div>
+<div class="tabs">
+<div class="tab-btn active" onclick="switchTab('progress',this)">各组进度</div>
+<div class="tab-btn" onclick="switchTab('schedule',this)">课程计划</div>
+</div>
+<div id="tab-progress" class="tab-content active">
+<div class="stats-grid">
+<div class="stat-card purple"><div class="stat-value purple" id="totalGroups">0</div><div class="stat-label">工作组总数</div></div>
+<div class="stat-card blue"><div class="stat-value blue" id="avgProgress">0%</div><div class="stat-label">平均进度</div></div>
+<div class="stat-card green"><div class="stat-value green" id="completedGroups">0</div><div class="stat-label">已完成组数</div></div>
+<div class="stat-card orange"><div class="stat-value orange" id="pendingTodos">0</div><div class="stat-label">待办事项</div></div>
+</div>
+<div class="chart-container"><h2>进度总览</h2><div class="chart-wrapper"><canvas id="progressChart"></canvas></div></div>
+<div id="groupsContainer"></div>
+<div class="save-hint">数据自动保存在浏览器中，刷新不会丢失</div>
+</div>
+<div id="tab-schedule" class="tab-content">
+<table><thead><tr><th>周次</th><th>主要工作</th><th>负责组别</th></tr></thead><tbody id="scheduleBody"></tbody></table>
+</div>
+</div>
+<div id="updateModal" class="modal-overlay">
+<div class="modal-box">
+<div class="modal-title" id="modalTitle">更新进度</div>
+<div class="modal-slider"><input type="range" id="progressSlider" min="0" max="100" step="5" value="0" class="slider-input"><span class="slider-value" id="progressValue">0%</span></div>
+<div class="modal-actions"><button class="btn btn-cancel" onclick="closeModal()">取消</button><button class="btn btn-confirm" onclick="submitUpdate()">确认</button></div>
+</div>
+</div>
 <script>
-// ===== 内嵌初始数据（首屏秒开，无需等待网络） =====
-var EMBEDDED_DATA = {"groups": [{"id": 1, "name": "执行制作组", "progress": 0, "todos": [{"id": 1, "text": "集中验收舞美、服装、道具、灯光、音响五大设计线条的最终成果", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 2, "text": "全体同学参与经费使用方案的讨论与审批", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 3, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 4, "text": "完成全剧完整连排，检验各场次之间的衔接流畅度", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 5, "text": "全面排查排练中暴露的表演、调度、技术配合等各类问题", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 6, "text": "为下周启动的技术合成做好充分准备", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 2, "name": "导演组", "progress": 0, "todos": [{"id": 7, "text": "集中验收舞美、服装、道具、灯光、音响五大设计线条的最终成果", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 8, "text": "全体同学参与经费使用方案的讨论与审批", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 9, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 10, "text": "完成全剧完整连排，检验各场次之间的衔接流畅度", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 11, "text": "全面排查排练中暴露的表演、调度、技术配合等各类问题", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 12, "text": "为下周启动的技术合成做好充分准备", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 3, "name": "舞美和道具设计组", "progress": 0, "todos": [{"id": 13, "text": "舞台美术设计方案本周内定稿，确定制作/采购方案", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 14, "text": "结合演出场地现场测量舞台美术制作方案", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 15, "text": "反馈剧组排练进度", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 16, "text": "道具清单完成终审，明确每件道具的落实方式和时间节点", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 17, "text": "确定代用道具，确保排练不受道具缺位影响", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 18, "text": "反馈剧组排练进度", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 4, "name": "舞台监督", "progress": 0, "todos": [], "notes": []}, {"id": 5, "name": "服化组", "progress": 0, "todos": [{"id": 19, "text": "服装设计方案本周内定稿，确定制作/采购方案", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 20, "text": "结合演员身形完成试装安排与尺寸记录", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 21, "text": "反馈剧组排练进度", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 6, "name": "灯光组", "progress": 0, "todos": [{"id": 22, "text": "各组灯光设计方案在本周内完成评审与定稿", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 23, "text": "确认灯光设备清单与实验室现有设备的匹配度", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 24, "text": "反馈剧组排练进度", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 7, "name": "音效组", "progress": 0, "todos": [{"id": 25, "text": "各组音响设计方案在本周内完成评审与定稿", "priority": "normal", "week": "第八周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 26, "text": "反馈剧组排练进度", "priority": "normal", "week": "第八周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 8, "name": "宣传组", "progress": 0, "todos": [{"id": 27, "text": "宣传视觉体系（主视觉、海报、推文模板）定稿", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 28, "text": "宣传预热活动方案以及大致预算费用", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 29, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 9, "name": "财务组", "progress": 0, "todos": [], "notes": []}, {"id": 10, "name": "演员", "progress": 0, "todos": [], "notes": []}, {"id": 11, "name": "后勤部", "progress": 0, "todos": [], "notes": []}]};
-
-var REPO='hahahahachou/performance-tracker',BRANCH='main',DATA_PATH='data/groups.json';
-var RAW_URL='https://raw.githubusercontent.com/'+REPO+'/'+BRANCH+'/'+DATA_PATH;
-var MIRROR_URL='https://fastly.jsdelivr.net/gh/'+REPO+'@'+BRANCH+'/'+DATA_PATH;
-var API_URL='https://api.github.com/repos/'+REPO+'/contents/'+DATA_PATH;
-var GITHUB_TOKEN=atob('Z2hwX0dtQktaQXlNMmVkQkdKdVN3eVN5eW1ublB1Y1FseTFpZnFobQ==');
-
-var groups=EMBEDDED_DATA.groups||[],chart=null,currentGroupId=null,dataSha=null,syncTimer=null,saveQueue=[],isSaving=false,dirty=false;
+var DATA={"groups": [{"id": 1, "name": "执行制作组", "progress": 0, "todos": [{"id": 1, "text": "集中验收舞美、服装、道具、灯光、音响五大设计线条的最终成果", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 2, "text": "全体同学参与经费使用方案的讨论与审批", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 3, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 4, "text": "完成全剧完整连排，检验各场次之间的衔接流畅度", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 5, "text": "全面排查排练中暴露的表演、调度、技术配合等各类问题", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 6, "text": "为下周启动的技术合成做好充分准备", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 2, "name": "导演组", "progress": 0, "todos": [{"id": 7, "text": "集中验收舞美、服装、道具、灯光、音响五大设计线条的最终成果", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 8, "text": "全体同学参与经费使用方案的讨论与审批", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 9, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 10, "text": "完成全剧完整连排，检验各场次之间的衔接流畅度", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 11, "text": "全面排查排练中暴露的表演、调度、技术配合等各类问题", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 12, "text": "为下周启动的技术合成做好充分准备", "priority": "normal", "week": "第十二周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 3, "name": "舞美和道具设计组", "progress": 0, "todos": [{"id": 13, "text": "舞台美术设计方案本周内定稿，确定制作/采购方案", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 14, "text": "结合演出场地现场测量舞台美术制作方案", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 15, "text": "反馈剧组排练进度", "priority": "normal", "week": "第四周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 16, "text": "道具清单完成终审，明确每件道具的落实方式和时间节点", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 17, "text": "确定代用道具，确保排练不受道具缺位影响", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 18, "text": "反馈剧组排练进度", "priority": "normal", "week": "第六周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 4, "name": "舞台监督", "progress": 0, "todos": [], "notes": []}, {"id": 5, "name": "服化组", "progress": 0, "todos": [{"id": 19, "text": "服装设计方案本周内定稿，确定制作/采购方案", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 20, "text": "结合演员身形完成试装安排与尺寸记录", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 21, "text": "反馈剧组排练进度", "priority": "normal", "week": "第五周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 6, "name": "灯光组", "progress": 0, "todos": [{"id": 22, "text": "各组灯光设计方案在本周内完成评审与定稿", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 23, "text": "确认灯光设备清单与实验室现有设备的匹配度", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 24, "text": "反馈剧组排练进度", "priority": "normal", "week": "第九周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 7, "name": "音效组", "progress": 0, "todos": [{"id": 25, "text": "各组音响设计方案在本周内完成评审与定稿", "priority": "normal", "week": "第八周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 26, "text": "反馈剧组排练进度", "priority": "normal", "week": "第八周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 8, "name": "宣传组", "progress": 0, "todos": [{"id": 27, "text": "宣传视觉体系（主视觉、海报、推文模板）定稿", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 28, "text": "宣传预热活动方案以及大致预算费用", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}, {"id": 29, "text": "反馈剧组排练进度", "priority": "normal", "week": "第十一周", "done": false, "created_at": "2026-09-03T00:00:00.000Z"}], "notes": []}, {"id": 9, "name": "财务组", "progress": 0, "todos": [], "notes": []}, {"id": 10, "name": "演员", "progress": 0, "todos": [], "notes": []}, {"id": 11, "name": "后勤部", "progress": 0, "todos": [], "notes": []}]};
+var groups=(DATA.groups||[]).map(function(g){return JSON.parse(JSON.stringify(g))});
+var chart=null,currentGroupId=null;
 var schedule=[
-  {week:'第四周',tasks:'舞台美术设计方案定稿；结合场地测量制作方案',groups:'舞美和道具设计组'},
-  {week:'第五周',tasks:'服装设计方案定稿；结合演员身形试装与尺寸记录',groups:'服化组'},
-  {week:'第六周',tasks:'道具清单终审；确定代用道具',groups:'舞美和道具设计组'},
-  {week:'第八周',tasks:'音响设计方案评审与定稿',groups:'音效组'},
-  {week:'第九周',tasks:'灯光设计方案评审与定稿；确认设备清单匹配度',groups:'灯光组'},
-  {week:'第十周',tasks:'集中验收五大设计线条成果；经费使用方案讨论审批',groups:'导演组、执行制作组'},
-  {week:'第十一周',tasks:'宣传视觉体系定稿；宣传预热方案及预算',groups:'宣传组'},
-  {week:'第十二周',tasks:'完成全剧连排；排查各类问题；为技术合成做准备',groups:'导演组、执行制作组'}
+{week:'第四周',tasks:'舞台美术设计方案定稿；结合场地测量制作方案',groups:'舞美和道具设计组'},
+{week:'第五周',tasks:'服装设计方案定稿；结合演员身形试装与尺寸记录',groups:'服化组'},
+{week:'第六周',tasks:'道具清单终审；确定代用道具',groups:'舞美和道具设计组'},
+{week:'第八周',tasks:'音响设计方案评审与定稿',groups:'音效组'},
+{week:'第九周',tasks:'灯光设计方案评审与定稿；确认设备清单匹配度',groups:'灯光组'},
+{week:'第十周',tasks:'集中验收五大设计线条成果；经费使用方案讨论审批',groups:'导演组、执行制作组'},
+{week:'第十一周',tasks:'宣传视觉体系定稿；宣传预热方案及预算',groups:'宣传组'},
+{week:'第十二周',tasks:'完成全剧连排；排查各类问题；为技术合成做准备',groups:'导演组、执行制作组'}
 ];
 
-function showToast(msg,type){var el=document.getElementById('toast');el.className='show '+(type||'info');el.textContent=msg;setTimeout(function(){el.className=''},2500)}
-function setSync(s,t){var el=document.getElementById('syncStatus');el.className=s==='ok'?'sync-ok':s==='wait'?'sync-wait':'sync-err';el.textContent=t}
+// 从 localStorage 恢复修改
+try{
+var saved=localStorage.getItem('tracker_data');
+if(saved){
+var s=JSON.parse(saved);
+if(s&&s.groups){
+for(var i=0;i<s.groups.length;i++){
+for(var j=0;j<groups.length;j++){
+if(groups[j].id===s.groups[i].id){
+if(s.groups[i].progress!==undefined)groups[j].progress=s.groups[i].progress;
+if(s.groups[i].todos)groups[j].todos=s.groups[i].todos;
+if(s.groups[i].notes)groups[j].notes=s.groups[i].notes;
+}}}}}}catch(e){}
 
-async function tryFetch(url,timeout){
-  var ctrl=new AbortController();
-  var timer=setTimeout(function(){ctrl.abort()},timeout||5000);
-  try{var r=await fetch(url,{signal:ctrl.signal,cache:'no-store'});clearTimeout(timer);return r}catch(e){clearTimeout(timer);return null}
-}
-
-async function fetchData(){
-  setSync('wait','同步中...');
-  var r=null;
-  // 先尝试镜像源（中国速度快）
-  r=await tryFetch(MIRROR_URL+'?t='+Date.now(),5000);
-  // 镜像失败则尝试 GitHub raw
-  if(!r||!r.ok) r=await tryFetch(RAW_URL+'?t='+Date.now(),5000);
-  if(r&&r.ok){
-    try{
-      var obj=await r.json();
-      groups=obj.groups||EMBEDDED_DATA.groups||[];
-      setSync('ok','已同步');
-      return true;
-    }catch(e){setSync('err','解析失败');showToast('数据解析失败，使用本地数据','error');groups=EMBEDDED_DATA.groups||[];return true}
-  }
-  // 全部失败，用内嵌数据
-  groups=EMBEDDED_DATA.groups||[];
-  setSync('err','离线模式');
-  showToast('网络不佳，显示上次保存的数据','info');
-  return true;
-}
-
-async function refreshSha(){
-  try{
-    var r=await fetch(API_URL,{headers:GITHUB_TOKEN?{'Authorization':'token '+GITHUB_TOKEN}:{}});
-    if(r.ok){var d=await r.json();dataSha=d.sha}
-  }catch(e){}
-}
-
-function enqueueSave(){saveQueue.push(Date.now());processSaveQueue()}
-async function processSaveQueue(){
-  if(isSaving||saveQueue.length===0)return;isSaving=true;
-  while(saveQueue.length>0){saveQueue.shift();await doSave()}
-  isSaving=false;
-}
-
-async function doSave(){
-  if(!GITHUB_TOKEN){showToast('只读模式：无法保存','error');return false}
-  try{
-    await refreshSha();if(!dataSha)throw new Error('无法获取文件信息');
-    var jsonStr=JSON.stringify({groups:groups},null,2);
-    var bytes=new TextEncoder().encode(jsonStr);var bin='';for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
-    var b64=btoa(bin);
-    var r=await fetch(API_URL,{method:'PUT',headers:{'Authorization':'token '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'Update: '+new Date().toLocaleString('zh-CN'),content:b64,sha:dataSha,branch:BRANCH})});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    var result=await r.json();dataSha=result.content.sha;dirty=false;showToast('已保存到云端','success');return true;
-  }catch(e){console.error(e);showToast('保存失败，数据暂存本地','error');return false}
-}
-
-function markDirty(){dirty=true;enqueueSave()}
-function getUser(){return document.getElementById('userName').value.trim()||'匿名用户'}
-
-function renderStats(){
-  var t=groups.length,a=t>0?Math.round(groups.reduce(function(s,g){return s+g.progress},0)/t):0;
-  var c=groups.filter(function(g){return g.progress>=100}).length;
-  var p=groups.reduce(function(s,g){return s+g.todos.filter(function(t){return !t.done}).length},0);
-  document.getElementById('totalGroups').textContent=t;
-  document.getElementById('avgProgress').textContent=a+'%';
-  document.getElementById('completedGroups').textContent=c;
-  document.getElementById('pendingTodos').textContent=p;
-}
+function saveLocal(){try{localStorage.setItem('tracker_data',JSON.stringify({groups:groups}))}catch(e){}}
 
 function escHtml(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s||''));return d.innerHTML}
 
+function renderStats(){
+var t=groups.length,a=t>0?Math.round(groups.reduce(function(s,g){return s+g.progress},0)/t):0;
+var c=groups.filter(function(g){return g.progress>=100}).length;
+var p=groups.reduce(function(s,g){return s+g.todos.filter(function(t){return !t.done}).length},0);
+document.getElementById('totalGroups').textContent=t;
+document.getElementById('avgProgress').textContent=a+'%';
+document.getElementById('completedGroups').textContent=c;
+document.getElementById('pendingTodos').textContent=p;
+}
+
 function renderGroups(){
-  var html='';
-  for(var i=0;i<groups.length;i++){
-    var g=groups[i],pt=g.todos.filter(function(t){return !t.done});
-    var todoHtml='';
-    for(var j=0;j<g.todos.length;j++){
-      var t=g.todos[j],wc='w'+(t.week?t.week.replace(/\D/g,''):'');
-      todoHtml+='<div class="todo-item '+(t.done?'todo-done':'')+'">';
-      todoHtml+='<input type="checkbox" class="todo-checkbox" '+(t.done?'checked':'')+' onchange="onToggleTodo('+g.id+','+t.id+')">';
-      todoHtml+='<span class="todo-text">'+escHtml(t.text)+'</span>';
-      if(t.week)todoHtml+='<span class="week-tag '+wc+'">'+t.week+'</span>';
-      todoHtml+='<span class="delete-btn" onclick="onDeleteTodo('+g.id+','+t.id+')">&times;</span></div>';
-    }
-    var noteHtml='';var notes=g.notes||[];
-    for(var k=0;k<notes.length;k++){var n=notes[k];
-      noteHtml+='<div class="note-item"><div class="note-item-inner"><span class="note-text">'+escHtml(n.text)+'</span><span class="delete-btn" onclick="onDeleteNote('+g.id+','+n.id+')">&times;</span></div></div>';
-    }
-    var pC=g.progress>=100?'high':g.progress>=50?'mid':'low';
-    html+='<div class="group-card"><div class="group-header"><div class="group-title"><div class="group-icon">'+g.id+'</div><div class="group-name">'+escHtml(g.name)+'</div></div>';
-    html+='<div class="group-progress"><span class="progress-value '+pC+'">'+g.progress+'%</span><button class="update-btn" onclick="openModal('+g.id+')">更新</button></div></div>';
-    html+='<div class="progress-bar-container"><div class="progress-bar '+pC+'" style="width:'+g.progress+'%"></div></div>';
-    html+='<div class="group-body"><div class="todo-section"><div class="section-label">&#x1F4CB; 待办事项'+(pt.length>0?'<span class="count">'+pt.length+'</span>':'')+'</div>';
-    html+='<div class="todo-list">'+todoHtml+'</div>';
-    html+='<div class="add-todo"><input type="text" id="todo-input-'+g.id+'" class="inline-input" placeholder="添加待办，按回车" onkeypress="if(event.key==='Enter')onAddTodo('+g.id+')"><select id="todo-priority-'+g.id+'" class="priority-select"><option value="normal">普通</option><option value="high">紧急</option></select></div></div>';
-    html+='<div class="note-section"><div class="section-label">&#x1F4DD; 备注/注意事项'+(notes.length>0?'<span class="count amber">'+notes.length+'</span>':'')+'</div>';
-    html+='<div class="note-list">'+noteHtml+'</div>';
-    html+='<div><textarea id="note-input-'+g.id+'" class="inline-textarea" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key==='Enter')onAddNote('+g.id+')"></textarea></div></div></div></div>';
-  }
-  document.getElementById('groupsContainer').innerHTML=html;
+var html='';
+for(var i=0;i<groups.length;i++){
+var g=groups[i],pt=g.todos.filter(function(t){return !t.done});
+var todoHtml='';
+for(var j=0;j<g.todos.length;j++){
+var t=g.todos[j],wc='w'+(t.week?t.week.replace(/\D/g,''):'');
+todoHtml+='<div class="todo-item '+(t.done?'todo-done':'')+'">';
+todoHtml+='<input type="checkbox" class="todo-checkbox" '+(t.done?'checked':'')+' onchange="onToggleTodo('+g.id+','+t.id+')">';
+todoHtml+='<span class="todo-text">'+escHtml(t.text)+'</span>';
+if(t.week)todoHtml+='<span class="week-tag '+wc+'">'+t.week+'</span>';
+todoHtml+='<span class="delete-btn" onclick="onDeleteTodo('+g.id+','+t.id+')">&times;</span></div>';
+}
+var noteHtml='';var notes=g.notes||[];
+for(var k=0;k<notes.length;k++){var n=notes[k];
+noteHtml+='<div class="note-item"><div class="note-item-inner"><span class="note-text">'+escHtml(n.text)+'</span><span class="delete-btn" onclick="onDeleteNote('+g.id+','+n.id+')">&times;</span></div></div>';}
+var pC=g.progress>=100?'high':g.progress>=50?'mid':'low';
+html+='<div class="group-card"><div class="group-header"><div class="group-title"><div class="group-icon">'+g.id+'</div><div class="group-name">'+escHtml(g.name)+'</div></div>';
+html+='<div class="group-progress"><span class="progress-value '+pC+'">'+g.progress+'%</span><button class="update-btn" onclick="openModal('+g.id+')">更新</button></div></div>';
+html+='<div class="progress-bar-container"><div class="progress-bar '+pC+'" style="width:'+g.progress+'%"></div></div>';
+html+='<div class="group-body"><div class="todo-section"><div class="section-label">&#x1F4CB; 待办事项'+(pt.length>0?'<span class="count">'+pt.length+'</span>':'')+'</div>';
+html+='<div class="todo-list">'+todoHtml+'</div>';
+html+='<div class="add-todo"><input type="text" id="todo-input-'+g.id+'" class="inline-input" placeholder="添加待办，按回车" onkeypress="if(event.key==='Enter')onAddTodo('+g.id+')"><select id="todo-priority-'+g.id+'" class="priority-select"><option value="normal">普通</option><option value="high">紧急</option></select></div></div>';
+html+='<div class="note-section"><div class="section-label">&#x1F4DD; 备注/注意事项'+(notes.length>0?'<span class="count amber">'+notes.length+'</span>':'')+'</div>';
+html+='<div class="note-list">'+noteHtml+'</div>';
+html+='<div><textarea id="note-input-'+g.id+'" class="inline-textarea" rows="2" placeholder="添加备注，Ctrl+回车" onkeydown="if(event.ctrlKey&&event.key==='Enter')onAddNote('+g.id+')"></textarea></div></div></div></div>';
+}
+document.getElementById('groupsContainer').innerHTML=html;
 }
 
 function renderSchedule(){
-  var html='';for(var i=0;i<schedule.length;i++){var s=schedule[i];
-    html+='<tr><td>'+s.week+'</td><td>'+s.tasks+'</td><td>'+s.groups+'</td></tr>';}
-  document.getElementById('scheduleBody').innerHTML=html;
+var html='';for(var i=0;i<schedule.length;i++){var s=schedule[i];
+html+='<tr><td>'+s.week+'</td><td>'+s.tasks+'</td><td>'+s.groups+'</td></tr>';}
+document.getElementById('scheduleBody').innerHTML=html;
 }
 
 function render(){renderGroups();renderStats()}
 
 function openModal(id){
-  currentGroupId=id;
-  for(var i=0;i<groups.length;i++){if(groups[i].id===id){
-    document.getElementById('modalTitle').textContent='更新: '+groups[i].name;
-    document.getElementById('progressSlider').value=groups[i].progress;
-    document.getElementById('progressValue').textContent=groups[i].progress+'%';break;
-  }}
-  document.getElementById('updateModal').classList.add('show');
+currentGroupId=id;
+for(var i=0;i<groups.length;i++){if(groups[i].id===id){
+document.getElementById('modalTitle').textContent='更新: '+groups[i].name;
+document.getElementById('progressSlider').value=groups[i].progress;
+document.getElementById('progressValue').textContent=groups[i].progress+'%';break;
+}}
+document.getElementById('updateModal').classList.add('show');
 }
 function closeModal(){document.getElementById('updateModal').classList.remove('show')}
 
 function submitUpdate(){
-  var p=parseInt(document.getElementById('progressSlider').value);
-  for(var i=0;i<groups.length;i++){if(groups[i].id===currentGroupId){groups[i].progress=p;groups[i].updated_at=new Date().toISOString();break}}
-  closeModal();render();updateChart();markDirty();
+var p=parseInt(document.getElementById('progressSlider').value);
+for(var i=0;i<groups.length;i++){if(groups[i].id===currentGroupId){groups[i].progress=p;break}}
+closeModal();render();updateChart();saveLocal();
 }
 
 function onToggleTodo(gid,tid){
-  for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
-    for(var j=0;j<groups[i].todos.length;j++){if(groups[i].todos[j].id===tid){groups[i].todos[j].done=!groups[i].todos[j].done;render();updateChart();markDirty();return}}}
+for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
+for(var j=0;j<groups[i].todos.length;j++){if(groups[i].todos[j].id===tid){groups[i].todos[j].done=!groups[i].todos[j].done;render();updateChart();saveLocal();return}}}
 }
 function onAddTodo(gid){
-  var inp=document.getElementById('todo-input-'+gid),text=inp.value.trim();if(!text)return;
-  var pr=document.getElementById('todo-priority-'+gid).value;
-  for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
-    var maxId=0;for(var j=0;j<groups.length;j++)for(var k=0;k<groups[j].todos.length;k++)if(groups[j].todos[k].id>maxId)maxId=groups[j].todos[k].id;
-    groups[i].todos.push({id:maxId+1,text:text,priority:pr,week:'',done:false,created_at:new Date().toISOString()});
-    inp.value='';render();updateChart();markDirty();return;
-  }
+var inp=document.getElementById('todo-input-'+gid),text=inp.value.trim();if(!text)return;
+var pr=document.getElementById('todo-priority-'+gid).value;
+for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
+var maxId=0;for(var j=0;j<groups.length;j++)for(var k=0;k<groups[j].todos.length;k++)if(groups[j].todos[k].id>maxId)maxId=groups[j].todos[k].id;
+groups[i].todos.push({id:maxId+1,text:text,priority:pr,week:'',done:false,created_at:new Date().toISOString()});
+inp.value='';render();updateChart();saveLocal();return;}
 }
 function onDeleteTodo(gid,tid){
-  if(!confirm('确认删除？'))return;
-  for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
-    groups[i].todos=groups[i].todos.filter(function(t){return t.id!==tid});render();updateChart();markDirty();return;}
+if(!confirm('确认删除？'))return;
+for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
+groups[i].todos=groups[i].todos.filter(function(t){return t.id!==tid});render();updateChart();saveLocal();return;}
 }
-
 function onAddNote(gid){
-  var inp=document.getElementById('note-input-'+gid),text=inp.value.trim();if(!text)return;
-  for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
-    if(!groups[i].notes)groups[i].notes=[];var maxId=0;
-    for(var j=0;j<groups.length;j++){var ns=groups[j].notes||[];for(var k=0;k<ns.length;k++)if(ns[k].id>maxId)maxId=ns[k].id}
-    groups[i].notes.push({id:maxId+1,text:text,created_at:new Date().toISOString()});
-    inp.value='';render();markDirty();return;
-  }
+var inp=document.getElementById('note-input-'+gid),text=inp.value.trim();if(!text)return;
+for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
+if(!groups[i].notes)groups[i].notes=[];var maxId=0;
+for(var j=0;j<groups.length;j++){var ns=groups[j].notes||[];for(var k=0;k<ns.length;k++)if(ns[k].id>maxId)maxId=ns[k].id}
+groups[i].notes.push({id:maxId+1,text:text,created_at:new Date().toISOString()});
+inp.value='';render();saveLocal();return;}
 }
 function onDeleteNote(gid,nid){
-  if(!confirm('确认删除？'))return;
-  for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
-    if(!groups[i].notes)return;groups[i].notes=groups[i].notes.filter(function(n){return n.id!==nid});render();markDirty();return;}
+if(!confirm('确认删除？'))return;
+for(var i=0;i<groups.length;i++){if(groups[i].id!==gid)continue;
+if(!groups[i].notes)return;groups[i].notes=groups[i].notes.filter(function(n){return n.id!==nid});render();saveLocal();return;}
 }
 
-function loadChart(){
-  if(typeof Chart==='undefined'){
-    var s=document.createElement('script');
-    s.src='https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
-    s.onload=createChart;document.head.appendChild(s);
-  }else{createChart()}
+function loadChartJS(){
+var s=document.createElement('script');
+s.src='https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+s.onload=createChart;
+s.onerror=function(){
+// bootcdn也失败，用纯CSS柱状图代替
+var wrapper=document.querySelector('.chart-wrapper');
+wrapper.innerHTML='<div style="display:flex;align-items:flex-end;gap:4px;height:100%;padding:10px 0">'+groups.map(function(g){
+var h=Math.max(g.progress,2);
+var color=g.progress>=100?'#16a34a':g.progress>=50?'#2563eb':'#7c3aed';
+return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:#6b7280">'+g.progress+'%</div><div style="width:100%;height:'+h+'%;background:'+color+';border-radius:4px;min-height:4px"></div><div style="font-size:9px;color:#6b7280;text-align:center;word-break:break-all">'+g.name.substring(0,3)+'</div></div>';
+}).join('')+'</div>';
+};
+document.head.appendChild(s);
 }
+
 function createChart(){
-  chart=new Chart(document.getElementById('progressChart').getContext('2d'),{
-    type:'bar',data:{labels:groups.map(function(g){return g.name}),datasets:[{label:'进度 (%)',data:groups.map(function(g){return g.progress}),backgroundColor:'rgba(124,58,237,0.8)',borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%'}}}},plugins:{legend:{display:false}}}}
-  });
+chart=new Chart(document.getElementById('progressChart').getContext('2d'),{
+type:'bar',data:{labels:groups.map(function(g){return g.name}),datasets:[{label:'进度 (%)',data:groups.map(function(g){return g.progress}),backgroundColor:'rgba(124,58,237,0.8)',borderRadius:6}]},
+options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%'}}}},plugins:{legend:{display:false}}}}
+});
 }
 function updateChart(){
-  if(!chart)return;
-  chart.data.datasets[0].data=groups.map(function(g){return g.progress});
-  chart.data.datasets[0].backgroundColor=groups.map(function(g){return g.progress===100?'rgba(22,163,74,0.8)':g.progress>=50?'rgba(37,99,235,0.8)':'rgba(124,58,237,0.8)'});
-  chart.update();
+if(!chart)return;
+chart.data.datasets[0].data=groups.map(function(g){return g.progress});
+chart.data.datasets[0].backgroundColor=groups.map(function(g){return g.progress===100?'rgba(22,163,74,0.8)':g.progress>=50?'rgba(37,99,235,0.8)':'rgba(124,58,237,0.8)'});
+chart.update();
 }
 
 function switchTab(tab,el){
-  var btns=document.querySelectorAll('.tab-btn'),tabs=document.querySelectorAll('.tab-content');
-  for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');
-  for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
-  el.classList.add('active');document.getElementById('tab-'+tab).classList.add('active');
+var btns=document.querySelectorAll('.tab-btn'),tabs=document.querySelectorAll('.tab-content');
+for(var i=0;i<btns.length;i++)btns[i].classList.remove('active');
+for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+el.classList.add('active');document.getElementById('tab-'+tab).classList.add('active');
 }
 document.getElementById('progressSlider').addEventListener('input',function(e){document.getElementById('progressValue').textContent=e.target.value+'%'});
 document.getElementById('updateModal').addEventListener('click',function(e){if(e.target===this)closeModal()});
 
-async function autoSync(){if(dirty)return;await fetchData();render();updateChart()}
-
-async function init(){
-  await fetchData(); // 即使网络失败，也有内嵌数据兜底
-  render();renderSchedule();loadChart();
-  syncTimer=setInterval(autoSync,30000);
-  setSync('ok','已加载');
-}
-init();
+render();renderSchedule();loadChartJS();
 </script>
 </body>
 </html>
